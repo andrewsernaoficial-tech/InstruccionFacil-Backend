@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 5
+server:
+  address: ${SERVER_BIND_ADDRESS:127.0.0.1}

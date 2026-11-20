@@ -1,2 +1,132 @@
-# InstruccionFacil-Backend
-API Spring Boot de InstrucciónFácil con Docker y Oracle
+# InstrucciónFácil Backend
+
+API REST para la escuela de manejo. El proyecto usa Java 21, Spring Boot 4, Maven, Spring Security, Spring JDBC, Flyway y OpenAPI. Los paquetes `controller`, `service`, `repository`, `entity` y `dto` siguen la organización de PharmaBackend.
+
+## Inicio local con Docker y Oracle
+
+En Windows, abre Docker Desktop en modo de contenedores Linux. Desde PowerShell, ubícate en la carpeta `InstruccionFacil-Backend`. Copia `.env.example` a `.env` y rellena las dos contraseñas en ese archivo local.
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+`ORACLE_APP_PASSWORD` es la contraseña de Oracle. `APP_ADMIN_PASSWORD` es la contraseña inicial de la aplicación y requiere al menos 10 caracteres, una letra y un número.
+
+Para iniciar ambos contenedores, ejecuta:
+
+```powershell
+docker compose up -d --build
+docker compose ps
+docker compose logs -f backend
+```
+
+La primera ejecución descarga Oracle Database Free y compila el backend en Docker. Cuando Oracle está listo, el backend arranca con el perfil `docker`, que activa el perfil `oracle`. La imagen de Oracle crea el usuario `INSTRUCCIONFACIL` la primera vez que se inicializa el volumen con la contraseña de `ORACLE_APP_PASSWORD`. Flyway crea las tablas al arrancar la API. Puedes cerrar la vista de registros con **Ctrl+C** y los contenedores seguirán en ejecución.
+
+Para comprobar la API, abre [health](http://localhost:8080/api/v1/health) o [Swagger](http://localhost:8080/swagger-ui/index.html). El administrador inicial de la API es `admin@instruccionfacil.test` con la contraseña que pusiste en `APP_ADMIN_PASSWORD`. Puedes cambiar los valores iniciales con `APP_ADMIN_EMAIL` y `APP_ADMIN_PASSWORD` antes de crear la cuenta por primera vez. Si omites `APP_JWT_SECRET`, se genera una clave nueva al reiniciar el backend.
+
+### Conexión desde SQL Developer
+
+| Campo | Valor |
+| --- | --- |
+| Usuario | `INSTRUCCIONFACIL` |
+| Contraseña | Valor local de `ORACLE_APP_PASSWORD` |
+| Tipo | Básico |
+| Rol | Default |
+| Host | `127.0.0.1` |
+| Puerto | `1521` |
+| Service name | `FREEPDB1` |
+
+Compose publica ambos puertos en `127.0.0.1`. El backend se conecta desde su contenedor a `oracle:1521/FREEPDB1`.
+
+Si reutilizas un volumen existente, usa la contraseña con la que se creó el usuario. Cambiar el valor en `.env` no modifica por sí solo la cuenta en Oracle.
+
+Puedes comprobar las tablas con `SELECT table_name FROM user_tables ORDER BY table_name;` desde la conexión de `INSTRUCCIONFACIL`. Usa `docker compose down` para detener el proyecto y conservar los datos en el volumen `oracle-data`.
+
+## Inicio local en Windows
+
+Abre PowerShell dentro de la carpeta `InstruccionFacil-Backend`. Para ejecutar directamente el JAR, compílalo con un **JDK 21** y acceso a Maven Central.
+
+```powershell
+java -version
+.\mvnw.cmd clean package
+$env:APP_ADMIN_EMAIL = 'admin@instruccionfacil.test'
+$env:APP_ADMIN_PASSWORD = Read-Host 'Contraseña inicial (10 caracteres, letras y números)' -MaskInput
+$env:APP_PAGO_YAPE = 'Número de demostración'
+java -jar target/instruccionfacil-backend-0.1.0.jar
+```
+
+`-MaskInput` requiere PowerShell 7. En Windows PowerShell 5.1 puedes usar `$env:APP_ADMIN_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host 'Contraseña inicial' -AsSecureString)).Password`.
+
+- Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- OpenAPI: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+- Comprobación de servicio y base: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)
+
+El perfil `local` usa H2 en modo Oracle y guarda los datos en `data/` dentro del directorio desde el que se inicia la aplicación. Flyway aplica la migración automáticamente. Las variables de administrador crean la cuenta la primera vez y los arranques siguientes respetan su contraseña existente. Si omites `APP_JWT_SECRET` en local, el servidor genera una clave nueva al iniciar y las sesiones anteriores caducan con el reinicio.
+
+Para compilar el código necesitas un **JDK 21** y acceso a Maven Central. Ejecuta `.\mvnw.cmd clean package` y el JAR nuevo quedará en `target/`. En Linux o macOS el wrapper es `./mvnw`.
+
+## Primer recorrido en Swagger
+
+1. En `POST /api/v1/auth/login`, usa `{"usuario":"admin@instruccionfacil.test","password":"TU_CONTRASEÑA"}`. Copia `accessToken` y pégalo en **Authorize**. Swagger añade el prefijo `Bearer`.
+2. Crea una cuenta de instructor en `POST /api/v1/admin/personal` con los campos `rol: INSTRUCTOR`, `nombre`, `email` y `password`. Puedes crear una segunda cuenta con rol `RECEPCION`.
+3. Crea un tipo de clase en `POST /api/v1/admin/tipos-clase` con `{"nombre":"Práctica de manejo","minutos":60,"tarifa":80.00,"activo":true}`. Crea un vehículo en `POST /api/v1/admin/vehiculos` con `{"placa":"ABC123","descripcion":"Vehículo de prácticas","transmision":"MECANICA","activo":true}`.
+4. Crea una ventana futura en `POST /api/v1/admin/instructores/{id}/horarios`, con `inicio` y `fin` en formato ISO, por ejemplo `2027-01-15T09:00:00` y `2027-01-15T13:00:00`. Usa una fecha futura al momento de probar.
+5. Registra un alumno en `POST /api/v1/auth/registro`, con `nombre`, `email` o `telefono`, y `password`. Inicia sesión como alumno y sustituye el token en **Authorize**.
+6. Consulta `GET /api/v1/disponibilidad` con `instructorId`, `tipoClaseId`, `fecha`, `transmision` y `vehiculoPropio`. Usa uno de los horarios devueltos en `POST /api/v1/citas`.
+
+```json
+{
+  "instructorId": 2,
+  "tipoClaseId": 3,
+  "inicio": "2027-01-15T09:00:00",
+  "transmision": "MECANICA",
+  "vehiculoPropio": false
+}
+```
+
+7. En `POST /api/v1/citas/{id}/pagos`, envía un formulario multipart con `medio` (`YAPE`, `PLIN` o `TRANSFERENCIA`), `operacion` y `archivo` (JPG, PNG o PDF de hasta 5 MB). Luego cambia a un token de administrador o recepción. Comprueba los datos con `GET /api/v1/admin/pagos/pendientes` y el archivo con `GET /api/v1/pagos/{id}/comprobante`.
+8. Usa `PATCH /api/v1/admin/pagos/{id}/revision` con `{"aprobar":true}`. El identificador de esta llamada es el **ID del pago**. Comprueba en `GET /api/v1/citas/{id}` que la **cita** quedó `CONFIRMADA`.
+
+## API y reglas
+
+| Recurso | Operaciones |
+| --- | --- |
+| Autenticación y perfil | Registro, acceso con correo o teléfono, bloqueo temporal por intentos fallidos, perfil e historial de citas. |
+| Administración | Altas de instructor y recepción, tipos de clase y tarifas, vehículos, horarios, bloqueos de flota y auditoría. |
+| Agenda | Disponibilidad, reserva propia o manual por recepción, reprogramación, cancelación y transiciones de ejecución. |
+| Pagos | Medios configurables, carga privada, revisión manual, historial y detección de operaciones duplicadas por medio. |
+
+- Los horarios se envían y reciben como fecha y hora local de **America/Lima**, sin sufijo de zona. Los inicios disponibles van en múltiplos de 15 minutos. Una cita usa la duración y la tarifa vigentes en el momento de reservar.
+- Con `vehiculoPropio: true` se requieren `placaPropia`, `marcaPropia` y `modeloPropio`. Con `false`, el servidor asigna una unidad libre de la transmisión solicitada. Recepción puede buscar al alumno por correo o teléfono en `GET /api/v1/admin/clientes/busqueda?contacto=...` e indicar `alumnoId` y `canal` (`PRESENCIAL`, `WHATSAPP`, `FACEBOOK`, `LLAMADA` o `WEB`) al agendar.
+- La disponibilidad se valida de nuevo dentro de la transacción de reserva. Un bloqueo de base de datos serializa los cambios que pueden competir por instructor, alumno o vehículo.
+- El plazo de aprobación es de 30 minutos por defecto y nunca supera el inicio de la clase. El vencimiento libera inmediatamente el horario para nuevas reservas y una tarea periódica actualiza el estado registrado. Recepción debe revisar los comprobantes antes del vencimiento.
+- La API exige token Bearer salvo en registro, login, salud y documentación. El cierre de sesión se realiza quitando el token en el cliente. Su vigencia es de una hora.
+- El origen CORS por defecto es `http://localhost:4200`. Para integrar Angular desde otro origen, establece `APP_CORS_ORIGINS` con la lista separada por comas.
+
+## Activar Oracle en AWS
+
+1. Compila el JAR con `.\mvnw.cmd clean package`. En SQL Developer y dentro de la **PDB** que vayas a usar, ejecuta `sql/crear_usuario_oracle.sql` con una conexión administradora y sustituye el marcador de contraseña. El script también permite consultar el nombre del servicio. Puedes ajustar los tablespaces si tu instalación usa nombres distintos.
+2. Arranca la aplicación con las variables de abajo. El nombre del servicio mostrado en SQL Developer puede diferir del alias que le diste a tu conexión. El ejemplo con `127.0.0.1` aplica cuando la API y Oracle están en la misma máquina.
+3. Flyway creará las tablas en el esquema de `INSTRUCCIONFACIL` durante el primer arranque. La cuenta de la API es la cuenta de ese esquema.
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = 'oracle'
+$env:DB_URL = 'jdbc:oracle:thin:@//127.0.0.1:1521/SERVICIO_PDB'
+$env:DB_USER = 'instruccionfacil'
+$env:DB_PASSWORD = Read-Host 'Contraseña de Oracle' -MaskInput
+$env:APP_JWT_SECRET = Read-Host 'Clave aleatoria de al menos 32 bytes' -MaskInput
+$env:APP_ADMIN_EMAIL = 'admin@instruccionfacil.test'
+$env:APP_ADMIN_PASSWORD = Read-Host 'Contraseña inicial de la API' -MaskInput
+java -jar target/instruccionfacil-backend-0.1.0.jar
+```
+
+| Variable opcional | Uso |
+| --- | --- |
+| `APP_RESERVATION_MINUTES` | Plazo de revisión y pago entre 1 y 1440 minutos. |
+| `APP_PAGO_YAPE`, `APP_PAGO_PLIN`, `APP_PAGO_TRANSFERENCIA` | Datos que devuelve la API para cada medio habilitado. Si los tres están vacíos, la lista queda vacía y pueden cargarse comprobantes para pruebas con cualquiera de los tres medios. |
+| `APP_CORS_ORIGINS` | Orígenes Angular permitidos. |
+| `SERVER_PORT` | Puerto HTTP interno, por defecto 8080. |
+| `SERVER_BIND_ADDRESS` | Dirección de escucha en perfil Oracle, por defecto `127.0.0.1`. Para exponer la API, publica HTTPS mediante un proxy y deja el listener de Oracle en acceso privado. |
+
+El alcance de esta versión comprende el flujo de reserva, revisión manual del pago y administración de la agenda. Quedan pendientes la API de WhatsApp, recuperación de contraseña, reembolsos, reportes exportables y facturación electrónica.

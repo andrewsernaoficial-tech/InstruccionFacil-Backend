@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: instruccionfacil-backend
+  profiles:
+    default: local
+    group:
+      docker: oracle
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+app:
+  jwt-secret: ${APP_JWT_SECRET:}
+  cors-origins: ${APP_CORS_ORIGINS:http://localhost:4200}
+  admin-email: ${APP_ADMIN_EMAIL:}
+  admin-password: ${APP_ADMIN_PASSWORD:}
+  reservation-minutes: ${APP_RESERVATION_MINUTES:30}
+  pago-yape: ${APP_PAGO_YAPE:}
+  pago-plin: ${APP_PAGO_PLIN:}
+  pago-transferencia: ${APP_PAGO_TRANSFERENCIA:}

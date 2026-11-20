@@ -1,0 +1,37 @@
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    environment:
+      ORACLE_RANDOM_PASSWORD: "yes"
+      APP_USER: INSTRUCCIONFACIL
+      APP_USER_PASSWORD: "${ORACLE_APP_PASSWORD:?Configura ORACLE_APP_PASSWORD en .env}"
+    ports:
+      - "127.0.0.1:1521:1521"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+
+  backend:
+    build: .
+    depends_on:
+      oracle:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:oracle:thin:@//oracle:1521/FREEPDB1
+      DB_USER: INSTRUCCIONFACIL
+      DB_PASSWORD: "${ORACLE_APP_PASSWORD:?Configura ORACLE_APP_PASSWORD en .env}"
+      SERVER_BIND_ADDRESS: 0.0.0.0
+      APP_JWT_SECRET: "${APP_JWT_SECRET:-}"
+      APP_ADMIN_EMAIL: "${APP_ADMIN_EMAIL:-admin@instruccionfacil.test}"
+      APP_ADMIN_PASSWORD: "${APP_ADMIN_PASSWORD:?Configura APP_ADMIN_PASSWORD en .env}"
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  oracle-data:
