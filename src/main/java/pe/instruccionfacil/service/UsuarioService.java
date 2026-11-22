@@ -46,12 +46,18 @@ public class UsuarioService {
             datos.telefono(), datos.dni(), datos.nacimiento(), datos.direccion().trim(), hash(datos.password())));
     }
 
+    @Transactional
     public Respuestas.Usuario crearPersonal(Solicitudes.Personal datos) {
         if (datos.rol() != Rol.INSTRUCTOR && datos.rol() != Rol.RECEPCION) {
             throw ApiException.invalido("El rol debe ser INSTRUCTOR o RECEPCION");
         }
-        return MapeoRespuestas.usuario(usuarios.crear(datos.nombre().trim(), normalizar(datos.email()), null,
-            hash(datos.password()), datos.rol()));
+        if (datos.rol() == Rol.INSTRUCTOR && (datos.telefono() == null || datos.dni() == null
+                || datos.nacimiento() == null || datos.direccion() == null || datos.direccion().isBlank())) {
+            throw ApiException.invalido("Completa teléfono, DNI, fecha de nacimiento y dirección del instructor");
+        }
+        return MapeoRespuestas.usuario(usuarios.crear(datos.nombre().trim(), normalizar(datos.email()), datos.telefono(),
+            hash(datos.password()), datos.rol(), datos.dni(), datos.nacimiento(),
+            datos.direccion() == null ? null : datos.direccion().trim()));
     }
 
     @Transactional(noRollbackFor = ApiException.class)

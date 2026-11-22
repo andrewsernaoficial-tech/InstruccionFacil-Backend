@@ -31,7 +31,9 @@ public final class Respuestas {
                        EstadoCita estado, String motivo) {}
     public record Pago(long id, long citaId, MedioPago medio, String operacion, BigDecimal monto,
                        EstadoPago estado, LocalDateTime creado, LocalDateTime revisado, Long revisorId, String motivo) {}
-    public record MedioDisponible(MedioPago medio, String datos) {}
+    public record MedioDisponible(MedioPago medio, String datos, boolean tieneQr) {}
+    public record Yape(String numero, boolean tieneQr) {}
+    public record ContactoInstructor(String telefono, String email) {}
     public record ArchivoComprobante(byte[] contenido, String mime) {}
     public record Evento(long id, Long actorId, String entidad, long entidadId, String accion,
                          String detalle, LocalDateTime fecha) {}

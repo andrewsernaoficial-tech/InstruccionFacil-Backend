@@ -21,6 +21,7 @@ public final class Modelo {
     public record Pago(long id, long citaId, MedioPago medio, String operacion, BigDecimal monto,
                        EstadoPago estado, LocalDateTime creado, LocalDateTime revisado, Long revisorId, String motivo) {}
     public record Instructor(long id, String nombre) {}
+    public record ConfiguracionYape(String numero, boolean tieneQr) {}
     public record Comprobante(byte[] contenido, String mime) {}
     public record Evento(long id, Long actorId, String entidad, long entidadId, String accion,
                          String detalle, LocalDateTime fecha) {}

@@ -117,7 +117,7 @@ public class CatalogoService {
     }
 
     @Transactional
-    public Respuestas.Horario crearHorario(long actor, long instructor, Solicitudes.Ventana datos) {
+    public Respuestas.Horario crearHorario(long instructor, Solicitudes.Ventana datos) {
         agenda.bloquearCambios();
         validarInstructor(instructor);
         intervalo(datos.inicio(), datos.fin());
@@ -128,7 +128,7 @@ public class CatalogoService {
             throw ApiException.conflicto("El instructor ya tiene un horario en ese intervalo");
         }
         long id = catalogo.crearHorario(instructor, datos.inicio(), datos.fin());
-        auditoria.registrar(actor, "HORARIO", id, "CREADO", null);
+        auditoria.registrar(instructor, "HORARIO", id, "CREADO", null);
         return MapeoRespuestas.horario(catalogo.horario(id).orElseThrow());
     }
 
@@ -136,6 +136,9 @@ public class CatalogoService {
     public void borrarHorario(long actor, long id) {
         agenda.bloquearCambios();
         var horario = catalogo.horario(id).orElseThrow(() -> ApiException.noEncontrado("Horario no encontrado"));
+        if (horario.instructorId() != actor) {
+            throw ApiException.noEncontrado("Horario no encontrado");
+        }
         if (agenda.instructorOcupado(horario.instructorId(), horario.inicio(), horario.fin(),
             LocalDateTime.now(reloj), 0)) {
             throw ApiException.conflicto("El horario ya tiene citas activas");

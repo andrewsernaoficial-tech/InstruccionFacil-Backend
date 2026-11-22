@@ -46,7 +46,7 @@ public class PagoRepository {
     }
 
     public Optional<Comprobante> comprobante(long id) {
-        return jdbc.query("SELECT contenido,mime FROM pago WHERE id=?",
+        return jdbc.query("SELECT contenido,mime FROM pago WHERE id=? AND contenido IS NOT NULL",
             (rs, n) -> new Comprobante(rs.getBytes("contenido"), rs.getString("mime")), id).stream().findFirst();
     }
 
@@ -67,12 +67,44 @@ public class PagoRepository {
             ps.setString(3, medio.name());
             ps.setString(4, operacion);
             ps.setBigDecimal(5, cita.monto());
-            ps.setBinaryStream(6, new ByteArrayInputStream(archivo.contenido()), archivo.contenido().length);
-            ps.setString(7, archivo.mime());
+            if (archivo == null) {
+                ps.setNull(6, java.sql.Types.BLOB);
+                ps.setNull(7, java.sql.Types.VARCHAR);
+            } else {
+                ps.setBlob(6, new ByteArrayInputStream(archivo.contenido()), archivo.contenido().length);
+                ps.setString(7, archivo.mime());
+            }
             ps.setTimestamp(8, java.sql.Timestamp.valueOf(ahora));
             return ps;
         });
         return buscar(id).orElseThrow();
+    }
+
+    public Optional<ConfiguracionYape> configuracionYape() {
+        return jdbc.query("SELECT numero, qr_mime FROM configuracion_yape WHERE id=1",
+            (rs, n) -> new ConfiguracionYape(rs.getString("numero"), rs.getString("qr_mime") != null)).stream().findFirst();
+    }
+
+    public Optional<Comprobante> qrYape() {
+        return jdbc.query("SELECT qr, qr_mime FROM configuracion_yape WHERE id=1 AND qr_mime IS NOT NULL",
+            (rs, n) -> new Comprobante(rs.getBytes("qr"), rs.getString("qr_mime"))).stream().findFirst();
+    }
+
+    public void guardarYape(String numero, Comprobante archivo) {
+        if (archivo == null) {
+            jdbc.update("""
+                UPDATE configuracion_yape SET
+                    qr_mime=CASE WHEN numero=? THEN qr_mime ELSE NULL END, numero=? WHERE id=1
+                """, numero, numero);
+            return;
+        }
+        jdbc.update(conn -> {
+            var ps = conn.prepareStatement("UPDATE configuracion_yape SET numero=?, qr=?, qr_mime=? WHERE id=1");
+            ps.setString(1, numero);
+            ps.setBlob(2, new ByteArrayInputStream(archivo.contenido()), archivo.contenido().length);
+            ps.setString(3, archivo.mime());
+            return ps;
+        });
     }
 
     public void revisar(long id, EstadoPago estado, long revisor, String motivo, LocalDateTime ahora) {

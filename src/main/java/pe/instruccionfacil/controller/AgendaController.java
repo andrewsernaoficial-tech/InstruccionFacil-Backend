@@ -39,6 +39,12 @@ public class AgendaController {
         return agenda.listar(Long.parseLong(jwt.getSubject()), desde, hasta);
     }
 
+    @GetMapping("/citas/{id}/instructor-contacto")
+    @PreAuthorize("hasAnyRole('CLIENTE','ADMIN','RECEPCION')")
+    Respuestas.ContactoInstructor contacto(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        return agenda.contactoInstructor(Long.parseLong(jwt.getSubject()), id);
+    }
+
     @GetMapping("/citas/{id}")
     Respuestas.Cita cita(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         return agenda.consultar(Long.parseLong(jwt.getSubject()), id);

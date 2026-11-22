@@ -24,7 +24,10 @@ public final class Solicitudes {
     public record Login(@NotBlank @Size(max=254) String usuario, @NotBlank @Size(max=72) String password) {}
     public record Personal(@NotNull Rol rol, @NotBlank @Size(max=120) String nombre,
                            @NotBlank @Email @Size(max=254) String email,
-                           @NotBlank @Size(min=10,max=72) String password) {}
+                           @NotBlank @Size(min=10,max=72) String password,
+                           @Pattern(regexp="\\+?[0-9]{9,15}") String telefono,
+                           @Pattern(regexp="[0-9]{8}") String dni,
+                           @Past LocalDate nacimiento, @Size(max=240) String direccion) {}
     public record Perfil(@NotBlank @Size(max=120) String nombre,
                          @Email @Size(max=254) String email,
                          @Pattern(regexp="\\+?[0-9]{9,15}") String telefono,

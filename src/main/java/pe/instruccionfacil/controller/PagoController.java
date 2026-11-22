@@ -35,6 +35,27 @@ public class PagoController {
         return pagos.medios();
     }
 
+    @GetMapping("/admin/pagos/yape")
+    @PreAuthorize("hasRole('ADMIN')")
+    Respuestas.Yape yape() {
+        return pagos.yape();
+    }
+
+    @PutMapping(path = "/admin/pagos/yape", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    Respuestas.Yape guardarYape(@RequestParam("numero") String numero,
+                                  @RequestParam(name = "qr", required = false) MultipartFile qr) {
+        return pagos.guardarYape(numero, qr);
+    }
+
+    @GetMapping("/pagos/yape/qr")
+    @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
+    ResponseEntity<byte[]> qrYape() {
+        var qr = pagos.qrYape();
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(qr.mime()))
+            .cacheControl(CacheControl.noStore()).body(qr.contenido());
+    }
+
     @GetMapping("/citas/{id}/pagos")
     @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
     List<Respuestas.Pago> historial(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
@@ -44,8 +65,9 @@ public class PagoController {
     @PostMapping(path = "/citas/{id}/pagos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    Respuestas.Pago subir(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @RequestParam MedioPago medio,
-               @RequestParam String operacion, @RequestParam MultipartFile archivo) {
+    Respuestas.Pago subir(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @RequestParam("medio") MedioPago medio,
+               @RequestParam(name = "operacion", required = false) String operacion,
+               @RequestParam(name = "archivo", required = false) MultipartFile archivo) {
         return pagos.subir(Long.parseLong(jwt.getSubject()), id, new Solicitudes.CargaComprobante(medio, operacion, archivo));
     }
 
@@ -61,8 +83,17 @@ public class PagoController {
         return pagos.revisar(Long.parseLong(jwt.getSubject()), id, datos);
     }
 
+    @GetMapping("/pagos/{id}/recibo")
+    @PreAuthorize("hasAnyRole('CLIENTE','ADMIN','RECEPCION')")
+    ResponseEntity<byte[]> recibo(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        var disposition = ContentDisposition.attachment().filename("recibo-" + id + ".pdf").build();
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
+            .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+            .body(pagos.recibo(Long.parseLong(jwt.getSubject()), id));
+    }
+
     @GetMapping("/pagos/{id}/comprobante")
-    @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
+    @PreAuthorize("hasAnyRole('CLIENTE','ADMIN','RECEPCION')")
     ResponseEntity<byte[]> descargar(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         var archivo = pagos.descargar(Long.parseLong(jwt.getSubject()), id);
         String extension = switch (archivo.mime()) {

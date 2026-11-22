@@ -39,9 +39,14 @@ public class UsuarioRepository {
     }
 
     public Usuario crear(String nombre, String email, String telefono, String hash, Rol rol) {
+        return crear(nombre, email, telefono, hash, rol, null, null, null);
+    }
+
+    public Usuario crear(String nombre, String email, String telefono, String hash, Rol rol,
+                         String dni, LocalDate nacimiento, String direccion) {
         long id = ids.siguiente();
-        jdbc.update("INSERT INTO usuario (id,nombre,email,telefono,password_hash,rol) VALUES (?,?,?,?,?,?)",
-            id, nombre, email, telefono, hash, rol.name());
+        jdbc.update("INSERT INTO usuario (id,nombre,email,telefono,password_hash,rol,dni,nacimiento,direccion) VALUES (?,?,?,?,?,?,?,?,?)",
+            id, nombre, email, telefono, hash, rol.name(), dni, nacimiento, direccion);
         return buscar(id).orElseThrow();
     }
 

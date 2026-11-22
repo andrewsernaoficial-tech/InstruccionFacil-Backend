@@ -17,6 +17,8 @@ import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
 import pe.instruccionfacil.entity.Canal;
 import pe.instruccionfacil.entity.EstadoCita;
+import pe.instruccionfacil.entity.MedioPago;
+import pe.instruccionfacil.entity.EstadoPago;
 import pe.instruccionfacil.entity.Modelo.*;
 import pe.instruccionfacil.entity.Rol;
 import pe.instruccionfacil.entity.Transmision;
@@ -90,6 +92,11 @@ public class AgendaService {
         return MapeoRespuestas.cita(autorizada(usuario, id));
     }
 
+    public Respuestas.ContactoInstructor contactoInstructor(long usuario, long id) {
+        var instructor = usuarios.obtener(autorizada(usuario, id).instructorId());
+        return new Respuestas.ContactoInstructor(instructor.telefono(), instructor.email());
+    }
+
     Cita autorizada(long usuario, long id) {
         var persona = usuarios.obtener(usuario);
         var cita = agenda.buscar(id).orElseThrow(() -> ApiException.noEncontrado("Cita no encontrada"));
@@ -155,13 +162,18 @@ public class AgendaService {
             || (cita.estado() != EstadoCita.CONFIRMADA && !pendienteVigente(cita, ahora))) {
             throw ApiException.conflicto("Solo puedes reprogramar citas vigentes que aún no comienzan");
         }
-        if (cita.estado() == EstadoCita.PENDIENTE_PAGO && datos.inicio().isBefore(cita.vence())) {
+        boolean efectivoPendiente = cita.estado() == EstadoCita.PENDIENTE_PAGO && pagos.deCita(id).stream()
+            .anyMatch(pago -> pago.medio() == MedioPago.EFECTIVO && pago.estado() == EstadoPago.EN_REVISION);
+        if (cita.estado() == EstadoCita.PENDIENTE_PAGO && !efectivoPendiente && datos.inicio().isBefore(cita.vence())) {
             throw ApiException.conflicto("El nuevo horario debe empezar después del plazo de pago");
         }
         var fin = datos.inicio().plus(Duration.between(cita.inicio(), cita.fin()));
         var vehiculo = verificarRecursos(cita.alumnoId(), datos.instructorId(), cita.placaPropia(),
             cita.transmision(), datos.inicio(), fin, ahora, cita.id());
         agenda.reprogramar(id, datos.instructorId(), vehiculo, datos.inicio(), fin);
+        if (efectivoPendiente) {
+            agenda.cambiarVencimiento(id, fin);
+        }
         auditoria.registrar(actor, "CITA", id, "REPROGRAMADA", cita.inicio() + " → " + datos.inicio());
         return MapeoRespuestas.cita(agenda.buscar(id).orElseThrow());
     }

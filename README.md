@@ -78,10 +78,10 @@ Para compilar el código necesitas un **JDK 21** y acceso a Maven Central. Ejecu
 ## Primer recorrido en Swagger
 
 1. En `POST /api/v1/auth/login`, usa `{"usuario":"admin@instruccionfacil.test","password":"TU_CONTRASEÑA"}`. Copia `accessToken` y pégalo en **Authorize**. Swagger añade el prefijo `Bearer`.
-2. Crea una cuenta de instructor en `POST /api/v1/admin/personal` con los campos `rol: INSTRUCTOR`, `nombre`, `email` y `password`. Puedes crear una segunda cuenta con rol `RECEPCION`.
+2. Crea una cuenta de instructor en `POST /api/v1/admin/personal` con `rol: INSTRUCTOR`, `nombre`, `email`, `telefono`, `dni`, `nacimiento`, `direccion` y `password`.
 3. Crea un tipo de clase en `POST /api/v1/admin/tipos-clase` con `{"nombre":"Práctica de manejo","minutos":60,"tarifa":80.00,"activo":true}`. Crea un vehículo en `POST /api/v1/admin/vehiculos` con `{"placa":"ABC123","descripcion":"Vehículo de prácticas","transmision":"MECANICA","activo":true}`.
-4. Crea una ventana futura en `POST /api/v1/admin/instructores/{id}/horarios`, con `inicio` y `fin` en formato ISO, por ejemplo `2027-01-15T09:00:00` y `2027-01-15T13:00:00`. Usa una fecha futura al momento de probar.
-5. Registra un alumno en `POST /api/v1/auth/registro`, con `nombre`, `email` o `telefono`, y `password`. Inicia sesión como alumno y sustituye el token en **Authorize**.
+4. Inicia sesión con la cuenta del instructor y crea su disponibilidad en `POST /api/v1/instructor/horarios`, con `inicio` y `fin` en formato ISO, por ejemplo `2027-01-15T09:00:00` y `2027-01-15T13:00:00`. Usa una fecha futura al momento de probar.
+5. Registra un alumno en `POST /api/v1/auth/registro`, con `nombre`, `email`, `telefono`, `dni`, `nacimiento`, `direccion` y `password`. Inicia sesión como alumno y sustituye el token en **Authorize**.
 6. Consulta `GET /api/v1/disponibilidad` con `instructorId`, `tipoClaseId`, `fecha`, `transmision` y `vehiculoPropio`. Usa uno de los horarios devueltos en `POST /api/v1/citas`.
 
 ```json
@@ -94,24 +94,26 @@ Para compilar el código necesitas un **JDK 21** y acceso a Maven Central. Ejecu
 }
 ```
 
-7. En `POST /api/v1/citas/{id}/pagos`, envía un formulario multipart con `medio` (`YAPE`, `PLIN` o `TRANSFERENCIA`), `operacion` y `archivo` (JPG, PNG o PDF de hasta 5 MB). Luego cambia a un token de administrador o recepción. Comprueba los datos con `GET /api/v1/admin/pagos/pendientes` y el archivo con `GET /api/v1/pagos/{id}/comprobante`.
-8. Usa `PATCH /api/v1/admin/pagos/{id}/revision` con `{"aprobar":true}`. El identificador de esta llamada es el **ID del pago**. Comprueba en `GET /api/v1/citas/{id}` que la **cita** quedó `CONFIRMADA`.
+7. En `POST /api/v1/citas/{id}/pagos`, envía un formulario multipart con `medio` (`YAPE`, `PLIN` o `TRANSFERENCIA`), `operacion` y `archivo` (JPG, PNG o PDF de hasta 5 MB). Luego cambia a un token de administrador o recepción. Comprueba los datos con `GET /api/v1/admin/pagos/pendientes` y el archivo con `GET /api/v1/pagos/{id}/comprobante`. Para pago en efectivo, envía solo `medio=EFECTIVO` y confirma la recepción del dinero en caja.
+8. Usa `PATCH /api/v1/admin/pagos/{id}/revision` con `{"aprobar":true}`. El identificador de esta llamada es el **ID del pago**. Comprueba en `GET /api/v1/citas/{id}` que la **cita** quedó `CONFIRMADA`. El alumno y el administrador pueden descargar el recibo interno en `GET /api/v1/pagos/{id}/recibo`.
 
 ## API y reglas
 
 | Recurso | Operaciones |
 | --- | --- |
 | Autenticación y perfil | Registro, acceso con correo o teléfono, bloqueo temporal por intentos fallidos, perfil e historial de citas. |
-| Administración | Altas de instructor y recepción, tipos de clase y tarifas, vehículos, horarios, bloqueos de flota y auditoría. |
+| Administración | Altas de instructor y recepción, tipos de clase y tarifas, vehículos, consulta de horarios, bloqueos de flota y auditoría. |
 | Agenda | Disponibilidad, reserva propia o manual por recepción, reprogramación, cancelación y transiciones de ejecución. |
 | Pagos | Medios configurables, carga privada, revisión manual, historial y detección de operaciones duplicadas por medio. |
 
 - Los horarios se envían y reciben como fecha y hora local de **America/Lima**, sin sufijo de zona. Los inicios disponibles van en múltiplos de 15 minutos. Una cita usa la duración y la tarifa vigentes en el momento de reservar.
 - Con `vehiculoPropio: true` se requieren `placaPropia`, `marcaPropia` y `modeloPropio`. Con `false`, el servidor asigna una unidad libre de la transmisión solicitada. Recepción puede buscar al alumno por correo o teléfono en `GET /api/v1/admin/clientes/busqueda?contacto=...` e indicar `alumnoId` y `canal` (`PRESENCIAL`, `WHATSAPP`, `FACEBOOK`, `LLAMADA` o `WEB`) al agendar.
 - La disponibilidad se valida de nuevo dentro de la transacción de reserva. Un bloqueo de base de datos serializa los cambios que pueden competir por instructor, alumno o vehículo.
-- El plazo de aprobación es de 30 minutos por defecto y nunca supera el inicio de la clase. El vencimiento libera inmediatamente el horario para nuevas reservas y una tarea periódica actualiza el estado registrado. Recepción debe revisar los comprobantes antes del vencimiento.
+- Para pagos digitales, el plazo de aprobación es de 30 minutos por defecto y nunca supera el inicio de la clase. Si el alumno elige efectivo, caja puede confirmar el pago hasta el fin previsto de la clase. El vencimiento libera inmediatamente el horario para nuevas reservas y una tarea periódica actualiza el estado registrado. Recepción debe revisar los comprobantes antes del vencimiento.
 - La API exige token Bearer salvo en registro, login, salud y documentación. El cierre de sesión se realiza quitando el token en el cliente. Su vigencia es de una hora.
 - El origen CORS por defecto es `http://localhost:4200`. Para integrar Angular desde otro origen, establece `APP_CORS_ORIGINS` con la lista separada por comas.
+
+El administrador puede guardar su número de Yape y adjuntar el QR oficial descargado de Yape en **Gestión de la escuela → Cobros**. Los alumnos pueden escanear ese QR desde su cita. El recibo PDF de la escuela es una constancia interna de pago.
 
 ## Activar Oracle en AWS
 

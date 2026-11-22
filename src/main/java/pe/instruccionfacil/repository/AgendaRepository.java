@@ -125,6 +125,10 @@ public class AgendaRepository {
             (rs, n) -> rs.getLong(1), ahora);
     }
 
+    public void cambiarVencimiento(long id, LocalDateTime vence) {
+        jdbc.update("UPDATE cita SET vence=? WHERE id=?", vence, id);
+    }
+
     public void cambiarEstado(long id, EstadoCita nuevo, String motivo) {
         jdbc.update("UPDATE cita SET estado=?, motivo=? WHERE id=?", nuevo.name(), motivo, id);
     }

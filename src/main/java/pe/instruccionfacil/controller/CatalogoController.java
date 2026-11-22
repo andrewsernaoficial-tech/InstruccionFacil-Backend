@@ -94,22 +94,30 @@ public class CatalogoController {
         catalogo.borrarBloqueo(Long.parseLong(jwt.getSubject()), id);
     }
 
+    @GetMapping("/instructor/horarios")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
+    List<Respuestas.Horario> misHorarios(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return catalogo.horarios(Long.parseLong(jwt.getSubject()), fecha);
+    }
+
     @GetMapping("/admin/instructores/{id}/horarios")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
     List<Respuestas.Horario> horarios(@PathVariable long id, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         return catalogo.horarios(id, fecha);
     }
 
-    @PostMapping("/admin/instructores/{id}/horarios")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/instructor/horarios")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
     @ResponseStatus(HttpStatus.CREATED)
-    Respuestas.Horario nuevoHorario(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
+    Respuestas.Horario nuevoHorario(@AuthenticationPrincipal Jwt jwt,
                          @Valid @RequestBody Solicitudes.Ventana datos) {
-        return catalogo.crearHorario(Long.parseLong(jwt.getSubject()), id, datos);
+        long instructor = Long.parseLong(jwt.getSubject());
+        return catalogo.crearHorario(instructor, datos);
     }
 
-    @DeleteMapping("/admin/horarios/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/instructor/horarios/{id}")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void borrarHorario(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         catalogo.borrarHorario(Long.parseLong(jwt.getSubject()), id);
