@@ -10,9 +10,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import pe.instruccionfacil.domain.Transmision;
 import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
+import pe.instruccionfacil.entity.Transmision;
 import pe.instruccionfacil.service.AgendaService;
 
 @RestController

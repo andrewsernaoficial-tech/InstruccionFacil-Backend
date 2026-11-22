@@ -14,9 +14,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pe.instruccionfacil.domain.MedioPago;
 import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
+import pe.instruccionfacil.entity.MedioPago;
 import pe.instruccionfacil.service.PagoService;
 
 @RestController

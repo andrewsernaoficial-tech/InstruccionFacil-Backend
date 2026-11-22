@@ -5,11 +5,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.springframework.web.multipart.MultipartFile;
-import pe.instruccionfacil.domain.Canal;
-import pe.instruccionfacil.domain.EstadoCita;
-import pe.instruccionfacil.domain.MedioPago;
-import pe.instruccionfacil.domain.Rol;
-import pe.instruccionfacil.domain.Transmision;
+import pe.instruccionfacil.entity.Canal;
+import pe.instruccionfacil.entity.EstadoCita;
+import pe.instruccionfacil.entity.MedioPago;
+import pe.instruccionfacil.entity.Rol;
+import pe.instruccionfacil.entity.Transmision;
 
 public final class Solicitudes {
     private Solicitudes() {}

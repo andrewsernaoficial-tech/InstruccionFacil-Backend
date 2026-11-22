@@ -12,15 +12,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.instruccionfacil.domain.Canal;
-import pe.instruccionfacil.domain.EstadoCita;
-import pe.instruccionfacil.domain.Rol;
-import pe.instruccionfacil.domain.Transmision;
 import pe.instruccionfacil.dto.Respuestas.Disponibilidad;
 import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
+import pe.instruccionfacil.entity.Canal;
+import pe.instruccionfacil.entity.EstadoCita;
 import pe.instruccionfacil.entity.Modelo.*;
-import pe.instruccionfacil.exception.ApiException;
+import pe.instruccionfacil.entity.Rol;
+import pe.instruccionfacil.entity.Transmision;
 import pe.instruccionfacil.repository.*;
 
 @Service

@@ -6,7 +6,7 @@ API REST para la escuela de manejo. El proyecto usa Java 21, Spring Boot 4, Mave
 
 - `controller` recibe las peticiones HTTP, valida los DTO de entrada y delega en `service`.
 - `service` aplica las reglas de negocio y convierte los modelos internos en DTO de respuesta.
-- `repository` ejecuta el SQL con JDBC y devuelve modelos internos de `entity`. Los valores de negocio compartidos, como roles y estados, están en `domain`.
+- `repository` ejecuta el SQL con JDBC y devuelve modelos internos de `entity`, donde también están los enums de roles y estados.
 - `dto/Solicitudes.java` y `dto/Respuestas.java` definen el contrato de la API REST que consume la vista Angular.
 
 ## Inicio local con Docker y Oracle

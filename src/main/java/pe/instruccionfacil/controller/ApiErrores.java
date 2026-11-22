@@ -1,4 +1,4 @@
-package pe.instruccionfacil.exception;
+package pe.instruccionfacil.controller;
 
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import pe.instruccionfacil.dto.Respuestas.ErrorApi;
+import pe.instruccionfacil.service.ApiException;
 
 @RestControllerAdvice
 public class ApiErrores {

@@ -4,12 +4,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import pe.instruccionfacil.domain.Canal;
-import pe.instruccionfacil.domain.EstadoCita;
-import pe.instruccionfacil.domain.EstadoPago;
-import pe.instruccionfacil.domain.MedioPago;
-import pe.instruccionfacil.domain.Rol;
-import pe.instruccionfacil.domain.Transmision;
+import pe.instruccionfacil.entity.Canal;
+import pe.instruccionfacil.entity.EstadoCita;
+import pe.instruccionfacil.entity.EstadoPago;
+import pe.instruccionfacil.entity.MedioPago;
+import pe.instruccionfacil.entity.Rol;
+import pe.instruccionfacil.entity.Transmision;
 
 public final class Respuestas {
     private Respuestas() {}

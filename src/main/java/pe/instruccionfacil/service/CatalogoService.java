@@ -9,9 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
-import pe.instruccionfacil.domain.Rol;
 import pe.instruccionfacil.entity.Modelo.*;
-import pe.instruccionfacil.exception.ApiException;
+import pe.instruccionfacil.entity.Rol;
 import pe.instruccionfacil.repository.*;
 
 @Service

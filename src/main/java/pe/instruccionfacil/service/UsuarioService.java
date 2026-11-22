@@ -16,9 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.instruccionfacil.config.SeguridadConfig;
 import pe.instruccionfacil.dto.*;
-import pe.instruccionfacil.domain.Rol;
 import pe.instruccionfacil.entity.Modelo.*;
-import pe.instruccionfacil.exception.ApiException;
+import pe.instruccionfacil.entity.Rol;
 import pe.instruccionfacil.repository.UsuarioRepository;
 
 @Service

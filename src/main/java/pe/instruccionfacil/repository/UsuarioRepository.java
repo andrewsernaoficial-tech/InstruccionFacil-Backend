@@ -7,8 +7,8 @@ import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import pe.instruccionfacil.domain.Rol;
 import pe.instruccionfacil.entity.Modelo.*;
+import pe.instruccionfacil.entity.Rol;
 
 @Repository
 public class UsuarioRepository {

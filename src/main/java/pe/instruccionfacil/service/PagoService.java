@@ -13,11 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
-import pe.instruccionfacil.domain.EstadoCita;
-import pe.instruccionfacil.domain.EstadoPago;
-import pe.instruccionfacil.domain.MedioPago;
+import pe.instruccionfacil.entity.EstadoCita;
+import pe.instruccionfacil.entity.EstadoPago;
+import pe.instruccionfacil.entity.MedioPago;
 import pe.instruccionfacil.entity.Modelo.*;
-import pe.instruccionfacil.exception.ApiException;
 import pe.instruccionfacil.repository.*;
 
 @Service

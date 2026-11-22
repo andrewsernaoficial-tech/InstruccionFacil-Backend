@@ -1,4 +1,4 @@
-package pe.instruccionfacil.exception;
+package pe.instruccionfacil.service;
 
 import org.springframework.http.HttpStatus;
 
