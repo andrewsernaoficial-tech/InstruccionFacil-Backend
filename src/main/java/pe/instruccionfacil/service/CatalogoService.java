@@ -36,6 +36,10 @@ public class CatalogoService {
         return catalogo.clases(incluirInactivas);
     }
 
+    public List<Evento> eventosRecientes() {
+        return auditoria.recientes();
+    }
+
     public TipoClase clase(long id) {
         return catalogo.clase(id).orElseThrow(() -> ApiException.noEncontrado("Tipo de clase no encontrado"));
     }

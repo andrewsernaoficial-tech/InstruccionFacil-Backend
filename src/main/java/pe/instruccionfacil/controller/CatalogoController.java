@@ -12,7 +12,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import pe.instruccionfacil.dto.*;
 import pe.instruccionfacil.entity.Modelo.*;
-import pe.instruccionfacil.repository.AuditoriaRepository;
 import pe.instruccionfacil.service.CatalogoService;
 
 @RestController
@@ -20,11 +19,9 @@ import pe.instruccionfacil.service.CatalogoService;
 @SecurityRequirement(name = "bearerAuth")
 public class CatalogoController {
     private final CatalogoService catalogo;
-    private final AuditoriaRepository auditoria;
 
-    public CatalogoController(CatalogoService catalogo, AuditoriaRepository auditoria) {
+    public CatalogoController(CatalogoService catalogo) {
         this.catalogo = catalogo;
-        this.auditoria = auditoria;
     }
 
     @GetMapping("/tipos-clase")
@@ -122,6 +119,6 @@ public class CatalogoController {
     @GetMapping("/admin/auditoria")
     @PreAuthorize("hasRole('ADMIN')")
     List<Evento> eventos() {
-        return auditoria.recientes();
+        return catalogo.eventosRecientes();
     }
 }
