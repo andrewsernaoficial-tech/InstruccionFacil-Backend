@@ -18,7 +18,7 @@ Copy-Item .env.example .env
 notepad .env
 ```
 
-`ORACLE_APP_PASSWORD` es la contraseña de Oracle. `APP_ADMIN_PASSWORD` es la contraseña inicial de la aplicación y requiere al menos 10 caracteres, una letra y un número.
+`ORACLE_APP_PASSWORD` es la contraseña de Oracle. `APP_ADMIN_PASSWORD` es la contraseña inicial de la aplicación. En Docker local requiere al menos 8 caracteres, una letra y un número. El perfil Oracle fuera de Docker requiere al menos 10 caracteres.
 
 Para iniciar ambos contenedores, ejecuta:
 
@@ -31,6 +31,8 @@ docker compose logs -f backend
 La primera ejecución descarga Oracle Database Free y compila el backend en Docker. Cuando Oracle está listo, el backend arranca con el perfil `docker`, que activa el perfil `oracle`. La imagen de Oracle crea el usuario `INSTRUCCIONFACIL` la primera vez que se inicializa el volumen con la contraseña de `ORACLE_APP_PASSWORD`. Flyway crea las tablas al arrancar la API. Puedes cerrar la vista de registros con **Ctrl+C** y los contenedores seguirán en ejecución.
 
 Para comprobar la API, abre [health](http://localhost:8080/api/v1/health) o [Swagger](http://localhost:8080/swagger-ui/index.html). El administrador inicial de la API es `admin@instruccionfacil.test` con la contraseña que pusiste en `APP_ADMIN_PASSWORD`. Puedes cambiar los valores iniciales con `APP_ADMIN_EMAIL` y `APP_ADMIN_PASSWORD` antes de crear la cuenta por primera vez. Si omites `APP_JWT_SECRET`, se genera una clave nueva al reiniciar el backend.
+
+Para restablecer la contraseña de un administrador existente, coloca su correo en `APP_ADMIN_EMAIL`, la nueva contraseña en `APP_ADMIN_PASSWORD` y activa `APP_ADMIN_RESET_PASSWORD=true` en `.env`. Luego ejecuta `docker compose up -d --build --force-recreate backend`. Prueba el inicio de sesión y vuelve a poner `APP_ADMIN_RESET_PASSWORD=false`. Aplica ese cambio con `docker compose up -d backend`.
 
 ### Conexión desde SQL Developer
 

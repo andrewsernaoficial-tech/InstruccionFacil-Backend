@@ -50,6 +50,23 @@ public class UsuarioRepository {
             intentos, bloqueadoHasta, id);
     }
 
+    public Usuario crearCliente(String nombre, String email, String telefono, String dni,
+                                LocalDate nacimiento, String direccion, String hash) {
+        long id = ids.siguiente();
+        jdbc.update("""
+            INSERT INTO usuario (id, nombre, email, telefono, dni, nacimiento, direccion, password_hash, rol)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'CLIENTE')
+            """, id, nombre, email, telefono, dni, java.sql.Date.valueOf(nacimiento), direccion, hash);
+        return buscar(id).orElseThrow();
+    }
+
+    public void restablecerClaveAdmin(long id, String hash) {
+        jdbc.update("""
+            UPDATE usuario SET password_hash = ?, intentos_fallidos = 0, bloqueado_hasta = NULL
+            WHERE id = ? AND rol = 'ADMIN'
+            """, hash, id);
+    }
+
     public void actualizar(long id, String nombre, String email, String telefono, String dni,
                            LocalDate nacimiento, String direccion) {
         jdbc.update("""

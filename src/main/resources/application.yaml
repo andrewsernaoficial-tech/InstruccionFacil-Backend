@@ -18,6 +18,7 @@ app:
   cors-origins: ${APP_CORS_ORIGINS:http://localhost:4200}
   admin-email: ${APP_ADMIN_EMAIL:}
   admin-password: ${APP_ADMIN_PASSWORD:}
+  admin-reset-password: ${APP_ADMIN_RESET_PASSWORD:false}
   reservation-minutes: ${APP_RESERVATION_MINUTES:30}
   pago-yape: ${APP_PAGO_YAPE:}
   pago-plin: ${APP_PAGO_PLIN:}

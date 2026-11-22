@@ -8,6 +8,8 @@ import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -38,10 +40,10 @@ public class UsuarioService {
         this.hashAlternativo = passwords.encode(java.util.UUID.randomUUID().toString());
     }
 
+    @Transactional
     public Respuestas.Usuario registrar(Solicitudes.Registro datos) {
-        String correo = normalizar(datos.email());
-        validarContacto(correo, datos.telefono());
-        return MapeoRespuestas.usuario(usuarios.crear(datos.nombre().trim(), correo, datos.telefono(), hash(datos.password()), Rol.CLIENTE));
+        return MapeoRespuestas.usuario(usuarios.crearCliente(datos.nombre().trim(), normalizar(datos.email()),
+            datos.telefono(), datos.dni(), datos.nacimiento(), datos.direccion().trim(), hash(datos.password())));
     }
 
     public Respuestas.Usuario crearPersonal(Solicitudes.Personal datos) {
@@ -113,18 +115,25 @@ public class UsuarioService {
     }
 
     private String hash(String password) {
-        if (password.length() < 10 || password.getBytes(StandardCharsets.UTF_8).length > 72
+        return hash(password, 10);
+    }
+
+    private String hash(String password, int minimo) {
+        if (password.length() < minimo || password.getBytes(StandardCharsets.UTF_8).length > 72
             || password.chars().noneMatch(Character::isLetter) || password.chars().noneMatch(Character::isDigit)) {
-            throw ApiException.invalido("La contraseña debe tener 10 caracteres, una letra y un número como mínimo, y hasta 72 bytes");
+            throw ApiException.invalido("La contraseña debe tener " + minimo
+                + " caracteres, una letra y un número como mínimo, y hasta 72 bytes");
         }
         return passwords.encode(password);
     }
 
     @Bean
     ApplicationRunner administradorInicial(@Value("${app.admin-email}") String email,
-                                          @Value("${app.admin-password}") String password) {
+                                          @Value("${app.admin-password}") String password,
+                                          @Value("${app.admin-reset-password}") boolean restablecer,
+                                          Environment environment) {
         return args -> {
-            if (email.isBlank() && password.isBlank()) {
+            if (!restablecer && email.isBlank() && password.isBlank()) {
                 return;
             }
             String correo = normalizar(email);
@@ -135,8 +144,14 @@ public class UsuarioService {
             if (existente.isPresent() && existente.get().rol() != Rol.ADMIN) {
                 throw new IllegalStateException("APP_ADMIN_EMAIL ya pertenece a una cuenta sin rol ADMIN");
             }
-            if (existente.isEmpty()) {
-                usuarios.crear("Administrador", correo, null, hash(password), Rol.ADMIN);
+            if (existente.isEmpty() || restablecer) {
+                int minimo = environment.acceptsProfiles(Profiles.of("local", "docker")) ? 8 : 10;
+                String hashAdmin = hash(password, minimo);
+                if (existente.isEmpty()) {
+                    usuarios.crear("Administrador", correo, null, hashAdmin, Rol.ADMIN);
+                } else {
+                    usuarios.restablecerClaveAdmin(existente.get().id(), hashAdmin);
+                }
             }
         };
     }

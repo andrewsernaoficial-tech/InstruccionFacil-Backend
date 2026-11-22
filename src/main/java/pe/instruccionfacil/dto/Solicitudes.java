@@ -15,8 +15,11 @@ public final class Solicitudes {
     private Solicitudes() {}
 
     public record Registro(@NotBlank @Size(max=120) String nombre,
-                           @Email @Size(max=254) String email,
-                           @Pattern(regexp="\\+?[0-9]{9,15}") String telefono,
+                           @NotBlank @Email @Size(max=254) String email,
+                           @NotBlank @Pattern(regexp="\\+?[0-9]{9,15}") String telefono,
+                           @NotBlank @Pattern(regexp="[0-9]{8}") String dni,
+                           @NotNull @Past LocalDate nacimiento,
+                           @NotBlank @Size(max=240) String direccion,
                            @NotBlank @Size(min=10, max=72) String password) {}
     public record Login(@NotBlank @Size(max=254) String usuario, @NotBlank @Size(max=72) String password) {}
     public record Personal(@NotNull Rol rol, @NotBlank @Size(max=120) String nombre,
