@@ -12,8 +12,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.instruccionfacil.dto.Solicitudes;
+import pe.instruccionfacil.domain.Canal;
+import pe.instruccionfacil.domain.EstadoCita;
+import pe.instruccionfacil.domain.Rol;
+import pe.instruccionfacil.domain.Transmision;
 import pe.instruccionfacil.dto.Respuestas.Disponibilidad;
+import pe.instruccionfacil.dto.Respuestas;
+import pe.instruccionfacil.dto.Solicitudes;
 import pe.instruccionfacil.entity.Modelo.*;
 import pe.instruccionfacil.exception.ApiException;
 import pe.instruccionfacil.repository.*;
@@ -54,7 +59,7 @@ public class AgendaService {
         }
         var ahora = LocalDateTime.now(reloj);
         var disponibles = new ArrayList<Disponibilidad>();
-        for (var ventana : configuracion.horarios(instructor, dia)) {
+        for (var ventana : configuracion.ventanasInstructor(instructor, dia)) {
             LocalDateTime inicio = ventana.inicio().truncatedTo(ChronoUnit.HOURS)
                 .plusMinutes((ventana.inicio().getMinute() / 15) * 15L);
             if (inicio.isBefore(ventana.inicio())) {
@@ -74,14 +79,19 @@ public class AgendaService {
         return disponibles;
     }
 
-    public List<Cita> listar(long usuario, LocalDate desde, LocalDate hasta) {
+    public List<Respuestas.Cita> listar(long usuario, LocalDate desde, LocalDate hasta) {
         if (hasta.isBefore(desde) || ChronoUnit.DAYS.between(desde, hasta) > 92) {
             throw ApiException.invalido("Selecciona un rango de hasta 93 días");
         }
-        return agenda.listar(usuarios.obtener(usuario), desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay());
+        return agenda.listar(usuarios.obtener(usuario), desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay())
+            .stream().map(MapeoRespuestas::cita).toList();
     }
 
-    public Cita autorizada(long usuario, long id) {
+    public Respuestas.Cita consultar(long usuario, long id) {
+        return MapeoRespuestas.cita(autorizada(usuario, id));
+    }
+
+    Cita autorizada(long usuario, long id) {
         var persona = usuarios.obtener(usuario);
         var cita = agenda.buscar(id).orElseThrow(() -> ApiException.noEncontrado("Cita no encontrada"));
         boolean visible = switch (persona.rol()) {
@@ -96,7 +106,7 @@ public class AgendaService {
     }
 
     @Transactional
-    public Cita reservar(long actorId, Solicitudes.Reserva datos) {
+    public Respuestas.Cita reservar(long actorId, Solicitudes.Reserva datos) {
         agenda.bloquearCambios();
         var actor = usuarios.obtener(actorId);
         if (actor.rol() == Rol.CLIENTE && datos.alumnoId() != null && datos.alumnoId() != actorId) {
@@ -134,11 +144,11 @@ public class AgendaService {
         var cita = agenda.crear(alumno, datos.instructorId(), clase, vehiculo, placa, marca, modelo, datos.transmision(),
             canal, datos.inicio(), fin, vencimiento);
         auditoria.registrar(actorId, "CITA", cita.id(), "PENDIENTE_PAGO", null);
-        return cita;
+        return MapeoRespuestas.cita(cita);
     }
 
     @Transactional
-    public Cita reprogramar(long actor, long id, Solicitudes.Reprogramacion datos) {
+    public Respuestas.Cita reprogramar(long actor, long id, Solicitudes.Reprogramacion datos) {
         agenda.bloquearCambios();
         var cita = autorizada(actor, id);
         var ahora = LocalDateTime.now(reloj);
@@ -154,7 +164,7 @@ public class AgendaService {
             cita.transmision(), datos.inicio(), fin, ahora, cita.id());
         agenda.reprogramar(id, datos.instructorId(), vehiculo, datos.inicio(), fin);
         auditoria.registrar(actor, "CITA", id, "REPROGRAMADA", cita.inicio() + " → " + datos.inicio());
-        return agenda.buscar(id).orElseThrow();
+        return MapeoRespuestas.cita(agenda.buscar(id).orElseThrow());
     }
 
     private Long verificarRecursos(long alumno, long instructor, String placa, Transmision transmision,
@@ -183,7 +193,7 @@ public class AgendaService {
     }
 
     @Transactional
-    public Cita cambiarEstado(long actor, long id, Solicitudes.CambioEstado datos) {
+    public Respuestas.Cita cambiarEstado(long actor, long id, Solicitudes.CambioEstado datos) {
         agenda.bloquearCambios();
         var cita = autorizada(actor, id);
         var usuario = usuarios.obtener(actor);
@@ -217,10 +227,10 @@ public class AgendaService {
         }
         agenda.cambiarEstado(id, datos.estado(), motivo);
         auditoria.registrar(actor, "CITA", id, datos.estado().name(), motivo);
-        return agenda.buscar(id).orElseThrow();
+        return MapeoRespuestas.cita(agenda.buscar(id).orElseThrow());
     }
 
-    public static boolean pendienteVigente(Cita cita, LocalDateTime ahora) {
+    static boolean pendienteVigente(Cita cita, LocalDateTime ahora) {
         return cita.estado() == EstadoCita.PENDIENTE_PAGO && cita.vence().isAfter(ahora);
     }
 

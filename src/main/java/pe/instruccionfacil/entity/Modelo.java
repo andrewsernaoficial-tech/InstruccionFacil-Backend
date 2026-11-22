@@ -3,16 +3,15 @@ package pe.instruccionfacil.entity;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import pe.instruccionfacil.domain.Canal;
+import pe.instruccionfacil.domain.EstadoCita;
+import pe.instruccionfacil.domain.EstadoPago;
+import pe.instruccionfacil.domain.MedioPago;
+import pe.instruccionfacil.domain.Rol;
+import pe.instruccionfacil.domain.Transmision;
 
 public final class Modelo {
     private Modelo() {}
-
-    public enum Rol { CLIENTE, INSTRUCTOR, RECEPCION, ADMIN }
-    public enum Transmision { MECANICA, AUTOMATICA }
-    public enum Canal { WEB, PRESENCIAL, WHATSAPP, FACEBOOK, LLAMADA }
-    public enum EstadoCita { PENDIENTE_PAGO, CONFIRMADA, EN_CURSO, COMPLETADA, CANCELADA, NO_ASISTIO, VENCIDA }
-    public enum MedioPago { YAPE, PLIN, TRANSFERENCIA }
-    public enum EstadoPago { EN_REVISION, APROBADO, RECHAZADO }
 
     public record Usuario(long id, String nombre, String email, String telefono, Rol rol,
                           String passwordHash, int intentos, LocalDateTime bloqueadoHasta,
@@ -27,6 +26,7 @@ public final class Modelo {
                        EstadoCita estado, String motivo) {}
     public record Pago(long id, long citaId, MedioPago medio, String operacion, BigDecimal monto,
                        EstadoPago estado, LocalDateTime creado, LocalDateTime revisado, Long revisorId, String motivo) {}
+    public record Instructor(long id, String nombre) {}
     public record Comprobante(byte[] contenido, String mime) {}
     public record Evento(long id, Long actorId, String entidad, long entidadId, String accion,
                          String detalle, LocalDateTime fecha) {}

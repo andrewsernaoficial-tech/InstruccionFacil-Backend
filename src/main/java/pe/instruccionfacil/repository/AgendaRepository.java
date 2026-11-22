@@ -6,6 +6,9 @@ import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import pe.instruccionfacil.domain.Canal;
+import pe.instruccionfacil.domain.EstadoCita;
+import pe.instruccionfacil.domain.Transmision;
 import pe.instruccionfacil.entity.Modelo.*;
 
 @Repository

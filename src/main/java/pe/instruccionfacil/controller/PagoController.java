@@ -14,8 +14,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import pe.instruccionfacil.domain.MedioPago;
+import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
-import pe.instruccionfacil.entity.Modelo.*;
 import pe.instruccionfacil.service.PagoService;
 
 @RestController
@@ -30,33 +31,33 @@ public class PagoController {
 
     @GetMapping("/pagos/medios")
     @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
-    List<PagoService.MedioDisponible> medios() {
+    List<Respuestas.MedioDisponible> medios() {
         return pagos.medios();
     }
 
     @GetMapping("/citas/{id}/pagos")
     @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
-    List<Pago> historial(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+    List<Respuestas.Pago> historial(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         return pagos.historial(Long.parseLong(jwt.getSubject()), id);
     }
 
     @PostMapping(path = "/citas/{id}/pagos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    Pago subir(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @RequestParam MedioPago medio,
+    Respuestas.Pago subir(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @RequestParam MedioPago medio,
                @RequestParam String operacion, @RequestParam MultipartFile archivo) {
-        return pagos.subir(Long.parseLong(jwt.getSubject()), id, medio, operacion, archivo);
+        return pagos.subir(Long.parseLong(jwt.getSubject()), id, new Solicitudes.CargaComprobante(medio, operacion, archivo));
     }
 
     @GetMapping("/admin/pagos/pendientes")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
-    List<Pago> pendientes() {
+    List<Respuestas.Pago> pendientes() {
         return pagos.pendientes();
     }
 
     @PatchMapping("/admin/pagos/{id}/revision")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
-    Pago revisar(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @Valid @RequestBody Solicitudes.Revision datos) {
+    Respuestas.Pago revisar(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @Valid @RequestBody Solicitudes.Revision datos) {
         return pagos.revisar(Long.parseLong(jwt.getSubject()), id, datos);
     }
 

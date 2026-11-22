@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
+import pe.instruccionfacil.domain.Rol;
 import pe.instruccionfacil.entity.Modelo.*;
 import pe.instruccionfacil.exception.ApiException;
 import pe.instruccionfacil.repository.*;
@@ -32,34 +33,34 @@ public class CatalogoService {
         this.reloj = reloj;
     }
 
-    public List<TipoClase> clases(boolean incluirInactivas) {
-        return catalogo.clases(incluirInactivas);
+    public List<Respuestas.TipoClase> clases(boolean incluirInactivas) {
+        return catalogo.clases(incluirInactivas).stream().map(MapeoRespuestas::tipoClase).toList();
     }
 
-    public List<Evento> eventosRecientes() {
-        return auditoria.recientes();
+    public List<Respuestas.Evento> eventosRecientes() {
+        return auditoria.recientes().stream().map(MapeoRespuestas::evento).toList();
     }
 
-    public TipoClase clase(long id) {
+    TipoClase clase(long id) {
         return catalogo.clase(id).orElseThrow(() -> ApiException.noEncontrado("Tipo de clase no encontrado"));
     }
 
     @Transactional
-    public TipoClase guardarClase(long actor, Long id, Solicitudes.Tipo datos) {
+    public Respuestas.TipoClase guardarClase(long actor, Long id, Solicitudes.Tipo datos) {
         agenda.bloquearCambios();
         if (id == null) {
-            long nuevo = catalogo.crearClase(datos);
+            long nuevo = catalogo.crearClase(datos.nombre().trim(), datos.minutos(), datos.tarifa(), datos.activo());
             auditoria.registrar(actor, "TIPO_CLASE", nuevo, "CREADO", null);
-            return clase(nuevo);
+            return MapeoRespuestas.tipoClase(clase(nuevo));
         }
         clase(id);
-        catalogo.editarClase(id, datos);
+        catalogo.editarClase(id, datos.nombre().trim(), datos.minutos(), datos.tarifa(), datos.activo());
         auditoria.registrar(actor, "TIPO_CLASE", id, "ACTUALIZADO", null);
-        return clase(id);
+        return MapeoRespuestas.tipoClase(clase(id));
     }
 
-    public List<Vehiculo> flota() {
-        return catalogo.flota();
+    public List<Respuestas.Vehiculo> flota() {
+        return catalogo.flota().stream().map(MapeoRespuestas::vehiculo).toList();
     }
 
     private Vehiculo vehiculo(long id) {
@@ -67,15 +68,15 @@ public class CatalogoService {
     }
 
     @Transactional
-    public Vehiculo guardarVehiculo(long actor, Long id, Solicitudes.Flota datos) {
+    public Respuestas.Vehiculo guardarVehiculo(long actor, Long id, Solicitudes.Flota datos) {
         agenda.bloquearCambios();
         String placa = datos.placa().toUpperCase(Locale.ROOT);
         var ahora = LocalDateTime.now(reloj);
         if (id == null) {
             validarPlacaFlota(placa, ahora);
-            long nuevo = catalogo.crearVehiculo(placa, datos);
+            long nuevo = catalogo.crearVehiculo(placa, datos.descripcion().trim(), datos.transmision(), datos.activo());
             auditoria.registrar(actor, "VEHICULO", nuevo, "CREADO", null);
-            return vehiculo(nuevo);
+            return MapeoRespuestas.vehiculo(vehiculo(nuevo));
         }
         Vehiculo actual = vehiculo(id);
         boolean cambioPlaca = !placa.equals(actual.placa());
@@ -86,9 +87,9 @@ public class CatalogoService {
         if (cambioPlaca) {
             validarPlacaFlota(placa, ahora);
         }
-        catalogo.editarVehiculo(id, placa, datos);
+        catalogo.editarVehiculo(id, placa, datos.descripcion().trim(), datos.transmision(), datos.activo());
         auditoria.registrar(actor, "VEHICULO", id, "ACTUALIZADO", null);
-        return vehiculo(id);
+        return MapeoRespuestas.vehiculo(vehiculo(id));
     }
 
     private void validarPlacaFlota(String placa, LocalDateTime ahora) {
@@ -98,22 +99,26 @@ public class CatalogoService {
     }
 
     public List<Respuestas.Instructor> instructores() {
-        return usuarios.instructores();
+        return usuarios.instructores().stream().map(MapeoRespuestas::instructor).toList();
     }
 
-    public void validarInstructor(long id) {
+    void validarInstructor(long id) {
         if (perfiles.obtener(id).rol() != Rol.INSTRUCTOR) {
             throw ApiException.invalido("Selecciona una cuenta con rol INSTRUCTOR");
         }
     }
 
-    public List<Horario> horarios(long instructor, LocalDate dia) {
+    public List<Respuestas.Horario> horarios(long instructor, LocalDate dia) {
+        return ventanasInstructor(instructor, dia).stream().map(MapeoRespuestas::horario).toList();
+    }
+
+    List<Horario> ventanasInstructor(long instructor, LocalDate dia) {
         validarInstructor(instructor);
         return catalogo.horarios(instructor, dia.atStartOfDay(), dia.plusDays(1).atStartOfDay());
     }
 
     @Transactional
-    public Horario crearHorario(long actor, long instructor, Solicitudes.Ventana datos) {
+    public Respuestas.Horario crearHorario(long actor, long instructor, Solicitudes.Ventana datos) {
         agenda.bloquearCambios();
         validarInstructor(instructor);
         intervalo(datos.inicio(), datos.fin());
@@ -123,9 +128,9 @@ public class CatalogoService {
         if (!catalogo.horarios(instructor, datos.inicio(), datos.fin()).isEmpty()) {
             throw ApiException.conflicto("El instructor ya tiene un horario en ese intervalo");
         }
-        long id = catalogo.crearHorario(instructor, datos);
+        long id = catalogo.crearHorario(instructor, datos.inicio(), datos.fin());
         auditoria.registrar(actor, "HORARIO", id, "CREADO", null);
-        return catalogo.horario(id).orElseThrow();
+        return MapeoRespuestas.horario(catalogo.horario(id).orElseThrow());
     }
 
     @Transactional
@@ -140,22 +145,23 @@ public class CatalogoService {
         auditoria.registrar(actor, "HORARIO", id, "ELIMINADO", null);
     }
 
-    public List<Bloqueo> bloqueos(long vehiculo) {
+    public List<Respuestas.Bloqueo> bloqueos(long vehiculo) {
         vehiculo(vehiculo);
-        return catalogo.bloqueos(vehiculo, LocalDateTime.now(reloj));
+        return catalogo.bloqueos(vehiculo, LocalDateTime.now(reloj)).stream().map(MapeoRespuestas::bloqueo).toList();
     }
 
     @Transactional
-    public Bloqueo crearBloqueo(long actor, long vehiculo, Solicitudes.BloqueoVehiculo datos) {
+    public Respuestas.Bloqueo crearBloqueo(long actor, long vehiculo, Solicitudes.BloqueoVehiculo datos) {
         agenda.bloquearCambios();
         vehiculo(vehiculo);
         intervalo(datos.inicio(), datos.fin());
         if (agenda.vehiculoOcupado(vehiculo, datos.inicio(), datos.fin(), LocalDateTime.now(reloj))) {
             throw ApiException.conflicto("El vehículo ya tiene citas en ese intervalo");
         }
-        long id = catalogo.crearBloqueo(vehiculo, datos);
-        auditoria.registrar(actor, "BLOQUEO_VEHICULO", id, "CREADO", datos.motivo().trim());
-        return catalogo.bloqueo(id).orElseThrow();
+        String motivo = datos.motivo().trim();
+        long id = catalogo.crearBloqueo(vehiculo, datos.inicio(), datos.fin(), motivo);
+        auditoria.registrar(actor, "BLOQUEO_VEHICULO", id, "CREADO", motivo);
+        return MapeoRespuestas.bloqueo(catalogo.bloqueo(id).orElseThrow());
     }
 
     @Transactional

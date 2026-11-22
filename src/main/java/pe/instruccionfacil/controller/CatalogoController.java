@@ -11,7 +11,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import pe.instruccionfacil.dto.*;
-import pe.instruccionfacil.entity.Modelo.*;
 import pe.instruccionfacil.service.CatalogoService;
 
 @RestController
@@ -25,7 +24,7 @@ public class CatalogoController {
     }
 
     @GetMapping("/tipos-clase")
-    List<TipoClase> clases() {
+    List<Respuestas.TipoClase> clases() {
         return catalogo.clases(false);
     }
 
@@ -36,54 +35,54 @@ public class CatalogoController {
 
     @GetMapping("/admin/tipos-clase")
     @PreAuthorize("hasRole('ADMIN')")
-    List<TipoClase> todasLasClases() {
+    List<Respuestas.TipoClase> todasLasClases() {
         return catalogo.clases(true);
     }
 
     @PostMapping("/admin/tipos-clase")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    TipoClase nuevaClase(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody Solicitudes.Tipo datos) {
+    Respuestas.TipoClase nuevaClase(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody Solicitudes.Tipo datos) {
         return catalogo.guardarClase(Long.parseLong(jwt.getSubject()), null, datos);
     }
 
     @PutMapping("/admin/tipos-clase/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    TipoClase editarClase(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
+    Respuestas.TipoClase editarClase(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
                           @Valid @RequestBody Solicitudes.Tipo datos) {
         return catalogo.guardarClase(Long.parseLong(jwt.getSubject()), id, datos);
     }
 
     @GetMapping("/admin/vehiculos")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
-    List<Vehiculo> vehiculos() {
+    List<Respuestas.Vehiculo> vehiculos() {
         return catalogo.flota();
     }
 
     @PostMapping("/admin/vehiculos")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    Vehiculo nuevoVehiculo(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody Solicitudes.Flota datos) {
+    Respuestas.Vehiculo nuevoVehiculo(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody Solicitudes.Flota datos) {
         return catalogo.guardarVehiculo(Long.parseLong(jwt.getSubject()), null, datos);
     }
 
     @PutMapping("/admin/vehiculos/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    Vehiculo editarVehiculo(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
+    Respuestas.Vehiculo editarVehiculo(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
                              @Valid @RequestBody Solicitudes.Flota datos) {
         return catalogo.guardarVehiculo(Long.parseLong(jwt.getSubject()), id, datos);
     }
 
     @GetMapping("/admin/vehiculos/{id}/bloqueos")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
-    List<Bloqueo> bloqueos(@PathVariable long id) {
+    List<Respuestas.Bloqueo> bloqueos(@PathVariable long id) {
         return catalogo.bloqueos(id);
     }
 
     @PostMapping("/admin/vehiculos/{id}/bloqueos")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    Bloqueo bloquear(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
+    Respuestas.Bloqueo bloquear(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
                      @Valid @RequestBody Solicitudes.BloqueoVehiculo datos) {
         return catalogo.crearBloqueo(Long.parseLong(jwt.getSubject()), id, datos);
     }
@@ -97,14 +96,14 @@ public class CatalogoController {
 
     @GetMapping("/admin/instructores/{id}/horarios")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
-    List<Horario> horarios(@PathVariable long id, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+    List<Respuestas.Horario> horarios(@PathVariable long id, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         return catalogo.horarios(id, fecha);
     }
 
     @PostMapping("/admin/instructores/{id}/horarios")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    Horario nuevoHorario(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
+    Respuestas.Horario nuevoHorario(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
                          @Valid @RequestBody Solicitudes.Ventana datos) {
         return catalogo.crearHorario(Long.parseLong(jwt.getSubject()), id, datos);
     }
@@ -118,7 +117,7 @@ public class CatalogoController {
 
     @GetMapping("/admin/auditoria")
     @PreAuthorize("hasRole('ADMIN')")
-    List<Evento> eventos() {
+    List<Respuestas.Evento> eventos() {
         return catalogo.eventosRecientes();
     }
 }

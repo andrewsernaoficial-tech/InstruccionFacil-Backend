@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.instruccionfacil.config.SeguridadConfig;
 import pe.instruccionfacil.dto.*;
+import pe.instruccionfacil.domain.Rol;
 import pe.instruccionfacil.entity.Modelo.*;
 import pe.instruccionfacil.exception.ApiException;
 import pe.instruccionfacil.repository.UsuarioRepository;
@@ -41,14 +42,14 @@ public class UsuarioService {
     public Respuestas.Usuario registrar(Solicitudes.Registro datos) {
         String correo = normalizar(datos.email());
         validarContacto(correo, datos.telefono());
-        return publicar(usuarios.crear(datos.nombre().trim(), correo, datos.telefono(), hash(datos.password()), Rol.CLIENTE));
+        return MapeoRespuestas.usuario(usuarios.crear(datos.nombre().trim(), correo, datos.telefono(), hash(datos.password()), Rol.CLIENTE));
     }
 
     public Respuestas.Usuario crearPersonal(Solicitudes.Personal datos) {
         if (datos.rol() != Rol.INSTRUCTOR && datos.rol() != Rol.RECEPCION) {
             throw ApiException.invalido("El rol debe ser INSTRUCTOR o RECEPCION");
         }
-        return publicar(usuarios.crear(datos.nombre().trim(), normalizar(datos.email()), null,
+        return MapeoRespuestas.usuario(usuarios.crear(datos.nombre().trim(), normalizar(datos.email()), null,
             hash(datos.password()), datos.rol()));
     }
 
@@ -75,15 +76,15 @@ public class UsuarioService {
             .issuedAt(instante).expiresAt(instante.plus(VIGENCIA)).claim("role", usuario.rol().name()).build();
         var header = JwsHeader.with(MacAlgorithm.HS256).build();
         return new Respuestas.Sesion(jwt.encode(JwtEncoderParameters.from(header, claims)).getTokenValue(),
-            "Bearer", VIGENCIA.toSeconds(), publicar(usuario));
+            "Bearer", VIGENCIA.toSeconds(), MapeoRespuestas.usuario(usuario));
     }
 
-    public Usuario obtener(long id) {
+    Usuario obtener(long id) {
         return usuarios.buscar(id).orElseThrow(() -> ApiException.noEncontrado("Usuario no encontrado"));
     }
 
     public Respuestas.Usuario perfil(long id) {
-        return publicar(obtener(id));
+        return MapeoRespuestas.usuario(obtener(id));
     }
 
     public Respuestas.Cliente buscarCliente(String contacto) {
@@ -97,13 +98,9 @@ public class UsuarioService {
     public Respuestas.Usuario actualizar(long id, Solicitudes.Perfil datos) {
         String correo = normalizar(datos.email());
         validarContacto(correo, datos.telefono());
-        usuarios.actualizar(id, correo, datos.telefono(), datos);
+        usuarios.actualizar(id, datos.nombre().trim(), correo, datos.telefono(), datos.dni(),
+            datos.nacimiento(), datos.direccion().trim());
         return perfil(id);
-    }
-
-    private static Respuestas.Usuario publicar(Usuario usuario) {
-        return new Respuestas.Usuario(usuario.id(), usuario.nombre(), usuario.email(), usuario.telefono(), usuario.rol(),
-            usuario.dni(), usuario.nacimiento(), usuario.direccion());
     }
 
     private static String normalizar(String valor) {

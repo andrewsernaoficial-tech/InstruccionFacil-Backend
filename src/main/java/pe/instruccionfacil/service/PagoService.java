@@ -11,21 +11,23 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
+import pe.instruccionfacil.domain.EstadoCita;
+import pe.instruccionfacil.domain.EstadoPago;
+import pe.instruccionfacil.domain.MedioPago;
 import pe.instruccionfacil.entity.Modelo.*;
 import pe.instruccionfacil.exception.ApiException;
 import pe.instruccionfacil.repository.*;
 
 @Service
 public class PagoService {
-    public record MedioDisponible(MedioPago medio, String datos) {}
-
     private final AgendaService citas;
     private final AgendaRepository agenda;
     private final PagoRepository pagos;
     private final AuditoriaRepository auditoria;
     private final Clock reloj;
-    private final List<MedioDisponible> medios;
+    private final List<Respuestas.MedioDisponible> medios;
 
     public PagoService(AgendaService citas, AgendaRepository agenda, PagoRepository pagos,
                        AuditoriaRepository auditoria, Clock reloj,
@@ -37,42 +39,43 @@ public class PagoService {
         this.pagos = pagos;
         this.auditoria = auditoria;
         this.reloj = reloj;
-        var configurados = new ArrayList<MedioDisponible>();
+        var configurados = new ArrayList<Respuestas.MedioDisponible>();
         if (!yape.isBlank()) {
-            configurados.add(new MedioDisponible(MedioPago.YAPE, yape));
+            configurados.add(new Respuestas.MedioDisponible(MedioPago.YAPE, yape));
         }
         if (!plin.isBlank()) {
-            configurados.add(new MedioDisponible(MedioPago.PLIN, plin));
+            configurados.add(new Respuestas.MedioDisponible(MedioPago.PLIN, plin));
         }
         if (!transferencia.isBlank()) {
-            configurados.add(new MedioDisponible(MedioPago.TRANSFERENCIA, transferencia));
+            configurados.add(new Respuestas.MedioDisponible(MedioPago.TRANSFERENCIA, transferencia));
         }
         this.medios = List.copyOf(configurados);
     }
 
-    public List<MedioDisponible> medios() {
+    public List<Respuestas.MedioDisponible> medios() {
         return medios;
     }
 
-    public List<Pago> historial(long actor, long cita) {
+    public List<Respuestas.Pago> historial(long actor, long cita) {
         citas.autorizada(actor, cita);
-        return pagos.deCita(cita);
+        return pagos.deCita(cita).stream().map(MapeoRespuestas::pago).toList();
     }
 
-    public List<Pago> pendientes() {
-        return pagos.pendientes(LocalDateTime.now(reloj));
+    public List<Respuestas.Pago> pendientes() {
+        return pagos.pendientes(LocalDateTime.now(reloj)).stream().map(MapeoRespuestas::pago).toList();
     }
 
     @Transactional
-    public Pago subir(long actor, long citaId, MedioPago medio, String operacion, MultipartFile archivo) {
-        String referencia = operacion.trim().toUpperCase(Locale.ROOT);
+    public Respuestas.Pago subir(long actor, long citaId, Solicitudes.CargaComprobante datos) {
+        MedioPago medio = datos.medio();
+        String referencia = datos.operacion().trim().toUpperCase(Locale.ROOT);
         if (referencia.isEmpty() || referencia.length() > 60 || !referencia.matches("[A-Z0-9._/-]+")) {
             throw ApiException.invalido("Ingresa un número de operación válido de hasta 60 caracteres");
         }
         if (!medios.isEmpty() && medios.stream().noneMatch(configurado -> configurado.medio() == medio)) {
             throw ApiException.invalido("El medio de pago no está habilitado");
         }
-        var comprobante = validar(archivo);
+        var comprobante = validar(datos.archivo());
         agenda.bloquearCambios();
         var cita = citas.autorizada(actor, citaId);
         var ahora = LocalDateTime.now(reloj);
@@ -84,11 +87,11 @@ public class PagoService {
         }
         var pago = pagos.crear(cita, medio, referencia, comprobante, ahora);
         auditoria.registrar(actor, "PAGO", pago.id(), "EN_REVISION", null);
-        return pago;
+        return MapeoRespuestas.pago(pago);
     }
 
     @Transactional
-    public Pago revisar(long actor, long id, Solicitudes.Revision datos) {
+    public Respuestas.Pago revisar(long actor, long id, Solicitudes.Revision datos) {
         agenda.bloquearCambios();
         var pago = pago(id);
         var cita = citas.autorizada(actor, pago.citaId());
@@ -107,12 +110,13 @@ public class PagoService {
             agenda.cambiarEstado(cita.id(), EstadoCita.CONFIRMADA, null);
             auditoria.registrar(actor, "CITA", cita.id(), "CONFIRMADA", null);
         }
-        return pago(id);
+        return MapeoRespuestas.pago(pago(id));
     }
 
-    public Comprobante descargar(long actor, long id) {
+    public Respuestas.ArchivoComprobante descargar(long actor, long id) {
         citas.autorizada(actor, pago(id).citaId());
-        return pagos.comprobante(id).orElseThrow(() -> ApiException.noEncontrado("Comprobante no encontrado"));
+        return pagos.comprobante(id).map(MapeoRespuestas::comprobante)
+            .orElseThrow(() -> ApiException.noEncontrado("Comprobante no encontrado"));
     }
 
     private Pago pago(long id) {

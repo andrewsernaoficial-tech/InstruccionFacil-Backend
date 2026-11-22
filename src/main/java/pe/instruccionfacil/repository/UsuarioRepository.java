@@ -1,13 +1,13 @@
 package pe.instruccionfacil.repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import pe.instruccionfacil.dto.Solicitudes;
-import pe.instruccionfacil.dto.Respuestas;
+import pe.instruccionfacil.domain.Rol;
 import pe.instruccionfacil.entity.Modelo.*;
 
 @Repository
@@ -50,15 +50,15 @@ public class UsuarioRepository {
             intentos, bloqueadoHasta, id);
     }
 
-    public void actualizar(long id, String email, String telefono, Solicitudes.Perfil perfil) {
+    public void actualizar(long id, String nombre, String email, String telefono, String dni,
+                           LocalDate nacimiento, String direccion) {
         jdbc.update("""
             UPDATE usuario SET nombre=?, email=?, telefono=?, dni=?, nacimiento=?, direccion=? WHERE id=?
-            """, perfil.nombre().trim(), email, telefono, perfil.dni(),
-            java.sql.Date.valueOf(perfil.nacimiento()), perfil.direccion().trim(), id);
+            """, nombre, email, telefono, dni, java.sql.Date.valueOf(nacimiento), direccion, id);
     }
 
-    public List<Respuestas.Instructor> instructores() {
+    public List<Instructor> instructores() {
         return jdbc.query("SELECT id, nombre FROM usuario WHERE rol = 'INSTRUCTOR' ORDER BY nombre, id",
-            (rs, fila) -> new Respuestas.Instructor(rs.getLong("id"), rs.getString("nombre")));
+            (rs, fila) -> new Instructor(rs.getLong("id"), rs.getString("nombre")));
     }
 }

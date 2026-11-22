@@ -1,12 +1,13 @@
 package pe.instruccionfacil.repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import pe.instruccionfacil.dto.Solicitudes;
+import pe.instruccionfacil.domain.Transmision;
 import pe.instruccionfacil.entity.Modelo.*;
 
 @Repository
@@ -39,16 +40,16 @@ public class CatalogoRepository {
         return jdbc.query("SELECT * FROM tipo_clase WHERE id=?", TIPO, id).stream().findFirst();
     }
 
-    public long crearClase(Solicitudes.Tipo datos) {
+    public long crearClase(String nombre, int minutos, BigDecimal tarifa, boolean activo) {
         long id = ids.siguiente();
         jdbc.update("INSERT INTO tipo_clase (id,nombre,minutos,tarifa,activo) VALUES (?,?,?,?,?)",
-            id, datos.nombre().trim(), datos.minutos(), datos.tarifa(), datos.activo() ? 1 : 0);
+            id, nombre, minutos, tarifa, activo ? 1 : 0);
         return id;
     }
 
-    public void editarClase(long id, Solicitudes.Tipo datos) {
+    public void editarClase(long id, String nombre, int minutos, BigDecimal tarifa, boolean activo) {
         jdbc.update("UPDATE tipo_clase SET nombre=?, minutos=?, tarifa=?, activo=? WHERE id=?",
-            datos.nombre().trim(), datos.minutos(), datos.tarifa(), datos.activo() ? 1 : 0, id);
+            nombre, minutos, tarifa, activo ? 1 : 0, id);
     }
 
     public List<Vehiculo> flota() {
@@ -59,16 +60,16 @@ public class CatalogoRepository {
         return jdbc.query("SELECT * FROM vehiculo WHERE id=?", VEHICULO, id).stream().findFirst();
     }
 
-    public long crearVehiculo(String placa, Solicitudes.Flota datos) {
+    public long crearVehiculo(String placa, String descripcion, Transmision transmision, boolean activo) {
         long id = ids.siguiente();
         jdbc.update("INSERT INTO vehiculo (id,placa,descripcion,transmision,activo) VALUES (?,?,?,?,?)",
-            id, placa, datos.descripcion().trim(), datos.transmision().name(), datos.activo() ? 1 : 0);
+            id, placa, descripcion, transmision.name(), activo ? 1 : 0);
         return id;
     }
 
-    public void editarVehiculo(long id, String placa, Solicitudes.Flota datos) {
+    public void editarVehiculo(long id, String placa, String descripcion, Transmision transmision, boolean activo) {
         jdbc.update("UPDATE vehiculo SET placa=?, descripcion=?, transmision=?, activo=? WHERE id=?",
-            placa, datos.descripcion().trim(), datos.transmision().name(), datos.activo() ? 1 : 0, id);
+            placa, descripcion, transmision.name(), activo ? 1 : 0, id);
     }
 
     public Optional<Horario> horario(long id) {
@@ -87,10 +88,10 @@ public class CatalogoRepository {
             """, Long.class, instructor, inicio, fin) > 0;
     }
 
-    public long crearHorario(long instructor, Solicitudes.Ventana datos) {
+    public long crearHorario(long instructor, LocalDateTime inicio, LocalDateTime fin) {
         long id = ids.siguiente();
         jdbc.update("INSERT INTO horario_instructor (id,instructor_id,inicio,fin) VALUES (?,?,?,?)",
-            id, instructor, datos.inicio(), datos.fin());
+            id, instructor, inicio, fin);
         return id;
     }
 
@@ -107,10 +108,10 @@ public class CatalogoRepository {
             BLOQUEO, vehiculo, desde);
     }
 
-    public long crearBloqueo(long vehiculo, Solicitudes.BloqueoVehiculo datos) {
+    public long crearBloqueo(long vehiculo, LocalDateTime inicio, LocalDateTime fin, String motivo) {
         long id = ids.siguiente();
         jdbc.update("INSERT INTO bloqueo_vehiculo (id,vehiculo_id,inicio,fin,motivo) VALUES (?,?,?,?,?)",
-            id, vehiculo, datos.inicio(), datos.fin(), datos.motivo().trim());
+            id, vehiculo, inicio, fin, motivo);
         return id;
     }
 

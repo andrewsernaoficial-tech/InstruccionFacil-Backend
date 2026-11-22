@@ -1,7 +1,7 @@
 package pe.instruccionfacil.controller;
 
-import java.util.Map;
 import org.springframework.web.bind.annotation.*;
+import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.service.HealthService;
 
 @RestController
@@ -14,8 +14,8 @@ public class HealthController {
     }
 
     @GetMapping("/health")
-    Map<String, String> estado() {
+    Respuestas.EstadoSalud estado() {
         salud.verificarConexion();
-        return Map.of("status", "UP");
+        return new Respuestas.EstadoSalud("UP");
     }
 }

@@ -4,7 +4,12 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import pe.instruccionfacil.entity.Modelo.*;
+import org.springframework.web.multipart.MultipartFile;
+import pe.instruccionfacil.domain.Canal;
+import pe.instruccionfacil.domain.EstadoCita;
+import pe.instruccionfacil.domain.MedioPago;
+import pe.instruccionfacil.domain.Rol;
+import pe.instruccionfacil.domain.Transmision;
 
 public final class Solicitudes {
     private Solicitudes() {}
@@ -39,5 +44,6 @@ public final class Solicitudes {
                           @Size(max=70) String marcaPropia, @Size(max=70) String modeloPropio) {}
     public record Reprogramacion(@NotNull @Positive Long instructorId, @NotNull LocalDateTime inicio) {}
     public record CambioEstado(@NotNull EstadoCita estado, @Size(max=240) String motivo) {}
+    public record CargaComprobante(MedioPago medio, String operacion, MultipartFile archivo) {}
     public record Revision(@NotNull Boolean aprobar, @Size(max=240) String motivo) {}
 }

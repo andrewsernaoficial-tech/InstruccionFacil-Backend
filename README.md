@@ -2,6 +2,13 @@
 
 API REST para la escuela de manejo. El proyecto usa Java 21, Spring Boot 4, Maven, Spring Security, Spring JDBC, Flyway y OpenAPI. Los paquetes `controller`, `service`, `repository`, `entity` y `dto` siguen la organización de PharmaBackend.
 
+## Arquitectura MVC
+
+- `controller` recibe las peticiones HTTP, valida los DTO de entrada y delega en `service`.
+- `service` aplica las reglas de negocio y convierte los modelos internos en DTO de respuesta.
+- `repository` ejecuta el SQL con JDBC y devuelve modelos internos de `entity`. Los valores de negocio compartidos, como roles y estados, están en `domain`.
+- `dto/Solicitudes.java` y `dto/Respuestas.java` definen el contrato de la API REST que consume la vista Angular.
+
 ## Inicio local con Docker y Oracle
 
 En Windows, abre Docker Desktop en modo de contenedores Linux. Desde PowerShell, ubícate en la carpeta `InstruccionFacil-Backend`. Copia `.env.example` a `.env` y rellena las dos contraseñas en ese archivo local.
