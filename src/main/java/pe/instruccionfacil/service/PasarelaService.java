@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
@@ -51,12 +52,13 @@ public class PasarelaService {
     private final String token;
     private final String secreto;
     private final String frontend;
+    private final boolean modoPrueba;
 
     public PasarelaService(RestClient http, AgendaRepository agenda, AgendaService citas, PagoRepository pagos,
             CheckoutRepository checkout, ReciboCorreoService correo, AuditoriaRepository auditoria, Clock reloj,
             PlatformTransactionManager tx, @Value("${app.mp-api-url}") String apiUrl,
             @Value("${app.mp-token}") String token, @Value("${app.mp-webhook-secret}") String secreto,
-            @Value("${app.mp-frontend-url}") String frontend) {
+            @Value("${app.mp-frontend-url}") String frontend, @Value("${app.mp-modo-prueba}") boolean modoPrueba) {
         this.http = http;
         this.agenda = agenda;
         this.citas = citas;
@@ -70,11 +72,14 @@ public class PasarelaService {
         this.token = token;
         this.secreto = secreto;
         this.frontend = frontend.replaceFirst("/+$", "");
+        this.modoPrueba = modoPrueba;
     }
 
     public boolean habilitada() {
-        return !token.isBlank() && !secreto.isBlank() && frontend.startsWith("https://");
+        return !token.isBlank() && (modoPrueba || !secreto.isBlank() && frontend.startsWith("https://"));
     }
+
+    public boolean modoPrueba() { return modoPrueba; }
 
     public boolean enCurso(long citaId, LocalDateTime ahora) {
         return checkout.porCita(citaId, false).filter(item -> item.abierto(ahora)).isPresent();
@@ -100,9 +105,13 @@ public class PasarelaService {
             if (!intento.abierto(LocalDateTime.now(reloj))) {
                 throw ApiException.conflicto("El intento de Mercado Pago terminó. Elige otro medio si la reserva sigue vigente");
             }
-            if (intento.enlace() != null) return new Respuestas.EnlaceCheckout(intento.enlace());
+            if (intento.enlace() != null) {
+                comprobarEntorno(intento.ordenExterna());
+                return new Respuestas.EnlaceCheckout(intento.enlace());
+            }
             var orden = crearOrden(cita, intento);
             String id = orden.path("id").asString("");
+            comprobarEntorno(id);
             String url = orden.path("checkout_url").asString("");
             if (!id.matches("[A-Za-z0-9]{5,60}") || !enlaceValido(url)
                     || !intento.referencia().equals(orden.path("external_reference").asString(""))
@@ -114,14 +123,17 @@ public class PasarelaService {
     }
 
     private JsonNode crearOrden(Cita cita, Checkout intento) {
-        String retorno = frontend + "/agenda?id=" + cita.id();
         var monto = cita.monto().setScale(2).toPlainString();
-        var payload = Map.of("type", "online", "processing_mode", "manual", "capture_mode", "automatic",
+        var payload = new HashMap<String, Object>(Map.of("type", "online", "processing_mode", "manual",
             "total_amount", monto, "external_reference", intento.referencia(),
             "expiration_time", Duration.between(intento.creado(), intento.vence()).toString(),
-            "items", List.of(Map.of("title", "Reserva de clase #" + cita.id(), "unit_price", monto, "quantity", 1)),
-            "config", Map.of("online", Map.of("success_url", retorno, "pending_url", retorno,
+            "items", List.of(Map.of("title", "Reserva de clase #" + cita.id(), "unit_price", monto, "quantity", 1))));
+        if (!modoPrueba) {
+            String retorno = frontend + "/agenda?id=" + cita.id();
+            payload.put("capture_mode", "automatic");
+            payload.put("config", Map.of("online", Map.of("success_url", retorno, "pending_url", retorno,
                 "failure_url", retorno, "auto_return", "all")));
+        }
         try {
             var orden = http.post().uri(apiUrl + "/v1/orders").contentType(MediaType.APPLICATION_JSON)
                 .headers(headers -> headers.setBearerAuth(token)).header("X-Idempotency-Key", intento.referencia())
@@ -134,16 +146,9 @@ public class PasarelaService {
     }
 
     public void notificacion(String id, String requestId, String firma) {
-        if (!habilitada()) throw noDisponible();
+        if (modoPrueba || !habilitada()) throw noDisponible();
         verificarFirma(id, requestId, firma);
-        JsonNode orden;
-        try {
-            orden = http.get().uri(apiUrl + "/v1/orders/{id}", id).headers(headers -> headers.setBearerAuth(token))
-                .retrieve().body(JsonNode.class);
-        } catch (RestClientException ex) {
-            throw noDisponible();
-        }
-        if (orden == null || !id.equalsIgnoreCase(orden.path("id").asString(""))) throw noDisponible();
+        JsonNode orden = consultarOrden(id);
         String referencia = orden.path("external_reference").asString("");
         if (!referencia.matches("[a-f0-9-]{36}")) return;
         transaccion.executeWithoutResult(tx -> {
@@ -158,6 +163,43 @@ public class PasarelaService {
             if (!id.equalsIgnoreCase(intento.ordenExterna())) return;
             aplicarOrden(intento, orden);
         });
+    }
+
+    public Respuestas.VerificacionCheckout verificarPagoPrueba(long actor, long citaId) {
+        if (!modoPrueba || !habilitada()) throw noDisponible();
+        citas.autorizada(actor, citaId);
+        var intento = checkout.porCita(citaId, false).filter(item -> item.ordenExterna() != null)
+            .orElseThrow(() -> ApiException.conflicto("Primero abre el checkout de prueba de esta reserva"));
+        comprobarEntorno(intento.ordenExterna());
+        var orden = consultarOrden(intento.ordenExterna());
+        if (!intento.referencia().equals(orden.path("external_reference").asString(""))) throw noDisponible();
+
+        return transaccion.execute(tx -> {
+            agenda.bloquearCambios();
+            var actual = checkout.porCita(citaId, true).orElseThrow();
+            if (!intento.ordenExterna().equals(actual.ordenExterna())) throw noDisponible();
+            aplicarOrden(actual, orden);
+            var actualizado = checkout.porCita(citaId, false).orElseThrow();
+            return new Respuestas.VerificacionCheckout(actualizado.estado(), actualizado.incidencia());
+        });
+    }
+
+    private JsonNode consultarOrden(String id) {
+        try {
+            var orden = http.get().uri(apiUrl + "/v1/orders/{id}", id).headers(headers -> headers.setBearerAuth(token))
+                .retrieve().body(JsonNode.class);
+            if (orden == null || !id.equalsIgnoreCase(orden.path("id").asString(""))) throw noDisponible();
+            return orden;
+        } catch (RestClientException ex) {
+            throw noDisponible();
+        }
+    }
+
+    private void comprobarEntorno(String id) {
+        if (modoPrueba && (id == null || !id.matches("ORDTST[A-Za-z0-9]{1,54}"))) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
+                "Mercado Pago no devolvió una orden de prueba. Revisa el Access Token en la pestaña Prueba");
+        }
     }
 
     private void aplicarOrden(Checkout intento, JsonNode orden) {
@@ -199,7 +241,7 @@ public class PasarelaService {
         checkout.actualizar(cita.id(), "ACREDITADO", null, ahora);
         auditoria.registrar(null, "PAGO", pago.id(), "APROBADO", "Mercado Pago");
         auditoria.registrar(null, "CITA", cita.id(), "CONFIRMADA", "Mercado Pago");
-        correo.programar(pago, cita);
+        if (!modoPrueba) correo.programar(pago, cita);
     }
 
     private void verificarFirma(String id, String requestId, String firma) {

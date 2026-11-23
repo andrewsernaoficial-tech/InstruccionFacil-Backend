@@ -25,6 +25,7 @@ app:
   pago-transferencia: ${APP_PAGO_TRANSFERENCIA:}
   mp-api-url: ${APP_MP_API_URL:https://api.mercadopago.com}
   mp-token: ${APP_MP_TOKEN:}
+  mp-modo-prueba: ${APP_MP_MODO_PRUEBA:false}
   mp-webhook-secret: ${APP_MP_WEBHOOK_SECRET:}
   mp-frontend-url: ${APP_MP_FRONTEND_URL:}
   gmail-oauth-url: ${APP_GMAIL_OAUTH_URL:https://oauth2.googleapis.com/token}

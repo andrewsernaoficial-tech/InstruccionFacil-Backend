@@ -31,7 +31,11 @@ public final class Respuestas {
                        EstadoCita estado, String motivo, String nombreClase, String nombreInstructor) {}
     public record Pago(long id, long citaId, MedioPago medio, String operacion, BigDecimal monto,
                        EstadoPago estado, LocalDateTime creado, LocalDateTime revisado, Long revisorId, String motivo) {}
-    public record MedioDisponible(MedioPago medio, String datos, boolean tieneQr) {}
+    public record MedioDisponible(MedioPago medio, String datos, boolean tieneQr, boolean modoPrueba) {
+        public MedioDisponible(MedioPago medio, String datos, boolean tieneQr) {
+            this(medio, datos, tieneQr, false);
+        }
+    }
     public record Yape(String numero, boolean tieneQr) {}
     public record ContactoInstructor(String telefono, String email) {}
     public record ArchivoComprobante(byte[] contenido, String mime) {}
@@ -40,6 +44,7 @@ public final class Respuestas {
     public record EstadoSalud(String status) {}
     public record ErrorApi(String mensaje, List<String> campos) {}
     public record EnlaceCheckout(String enlace) {}
+    public record VerificacionCheckout(String estado, String incidencia) {}
     public record EnvioCorreo(String estado) {}
     public record IngresoDiario(LocalDate fecha, BigDecimal monto, long pagos) {}
     public record IngresoMedio(MedioPago medio, BigDecimal monto, long pagos) {}

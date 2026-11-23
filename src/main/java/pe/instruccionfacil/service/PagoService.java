@@ -71,7 +71,10 @@ public class PagoService {
         }
         configurados.add(new Respuestas.MedioDisponible(MedioPago.EFECTIVO, "Paga al llegar a la escuela.", false));
         if (pasarela.habilitada()) {
-            configurados.addFirst(new Respuestas.MedioDisponible(MedioPago.MERCADO_PAGO, "Paga en el sitio de Mercado Pago.", false));
+            boolean prueba = pasarela.modoPrueba();
+            String datos = prueba ? "Usa una tarjeta de prueba. Luego vuelve a la agenda y verifica el pago."
+                : "Paga en el sitio de Mercado Pago.";
+            configurados.addFirst(new Respuestas.MedioDisponible(MedioPago.MERCADO_PAGO, datos, false, prueba));
         }
         return configurados;
     }

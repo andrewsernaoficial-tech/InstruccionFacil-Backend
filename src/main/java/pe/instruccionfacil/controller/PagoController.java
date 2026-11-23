@@ -42,6 +42,12 @@ public class PagoController {
         return pasarela.abrir(Long.parseLong(jwt.getSubject()), id);
     }
 
+    @PostMapping("/citas/{id}/pagos/checkout/verificar")
+    @PreAuthorize("hasRole('CLIENTE')")
+    Respuestas.VerificacionCheckout verificarCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        return pasarela.verificarPagoPrueba(Long.parseLong(jwt.getSubject()), id);
+    }
+
     @PostMapping("/pagos/{id}/recibo/correo")
     @PreAuthorize("hasAnyRole('CLIENTE','ADMIN','RECEPCION')")
     @ResponseStatus(HttpStatus.ACCEPTED)

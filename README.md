@@ -148,7 +148,7 @@ Las integraciones se configuran en el backend. Usa variables de entorno en Intel
 
 | Integración | Variables | Configuración |
 | --- | --- | --- |
-| Mercado Pago Checkout Pro, Orders API | `APP_MP_TOKEN`, `APP_MP_WEBHOOK_SECRET`, `APP_MP_FRONTEND_URL` | Usa una aplicación vendedora peruana y sus credenciales de prueba primero. Indica la URL HTTPS del frontend. En el panel de Mercado Pago, registra el evento **Order (Mercado Pago)** y la URL pública HTTPS del backend terminada en `/api/v1/webhooks/mercado-pago`. |
+| Mercado Pago Checkout Pro, Orders API | `APP_MP_TOKEN`, `APP_MP_MODO_PRUEBA`, `APP_MP_WEBHOOK_SECRET`, `APP_MP_FRONTEND_URL` | Para pruebas locales, activa `APP_MP_MODO_PRUEBA`. Para confirmación por webhook, indica la URL HTTPS del frontend y registra el evento **Order (Mercado Pago)** con la URL pública HTTPS del backend terminada en `/api/v1/webhooks/mercado-pago`. |
 | Gmail API | `APP_GMAIL_CLIENT_ID`, `APP_GMAIL_CLIENT_SECRET`, `APP_GMAIL_REFRESH_TOKEN`, `APP_GMAIL_REMITENTE` | Habilita Gmail API y autoriza el remitente con OAuth 2.0, acceso sin conexión y el alcance `https://www.googleapis.com/auth/gmail.send`. El remitente debe ser la cuenta autorizada o un alias habilitado. |
 | DNI peruano | `APP_DNI_TOKEN`, `APP_DNI_OBLIGATORIO` | Usa el token de Endpoint.pe. Configura `APP_DNI_OBLIGATORIO=true` si el entorno debe impedir altas y cambios de identidad cuando no hay credenciales. Con token configurado, una falla de consulta impide completar la operación y permite reintentar. |
 
@@ -162,3 +162,11 @@ Las integraciones se configuran en el backend. Usa variables de entorno en Intel
 - En **Gestión de la escuela → Flota**, administración puede registrar, editar, bloquear y retirar vehículos. Los vehículos con citas activas requieren reprogramarlas antes de retirarlos.
 
 Documentación de proveedores: [Mercado Pago Orders](https://www.mercadopago.com.pe/developers/es/docs/checkout-pro-orders/create-order), [notificaciones de Mercado Pago](https://www.mercadopago.com.pe/developers/es/docs/checkout-pro-orders/notifications), [envío por Gmail](https://developers.google.com/workspace/gmail/api/guides/sending), [OAuth de Google](https://developers.google.com/identity/protocols/oauth2/web-server) y [consulta de DNI](https://endpoint.pe/docs/apis/dni).
+
+### Probar Mercado Pago desde localhost
+
+1. En Mercado Pago Developers, abre tu integración de Checkout Pro y selecciona **Prueba → Credenciales**. Copia el **Access Token** de esa pestaña.
+2. Configura `APP_MP_MODO_PRUEBA=true` y `APP_MP_TOKEN` con el token de prueba en la configuración de ejecución de IntelliJ o en tu `.env` privado para Docker Compose. Puedes dejar vacías `APP_MP_WEBHOOK_SECRET` y `APP_MP_FRONTEND_URL`. Usa una base local con datos de prueba.
+3. Inicia el backend y el frontend. Entra como alumno, abre una reserva pendiente y elige **Preparar pago de prueba**. Copia el enlace **Abrir checkout de prueba** y ábrelo en una ventana de incógnito con una tarjeta de prueba del panel.
+4. Vuelve a la agenda local y pulsa **Verificar pago de prueba**. `POST /api/v1/citas/{id}/pagos/checkout/verificar` consulta la orden guardada con Mercado Pago y confirma la reserva solo si la orden está acreditada y coincide con el importe y la moneda de la cita. El modo de prueba no requiere un túnel y no envía automáticamente recibos por correo.
+
