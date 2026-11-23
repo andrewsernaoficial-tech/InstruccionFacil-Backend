@@ -33,7 +33,6 @@ public class PagoService {
 
     public PagoService(AgendaService citas, AgendaRepository agenda, PagoRepository pagos,
                        AuditoriaRepository auditoria, Clock reloj, UsuarioService usuarios, PasarelaService pasarela, ReciboCorreoService correo,
-                       @Value("${app.pago-yape:}") String yape,
                        @Value("${app.pago-plin:}") String plin,
                        @Value("${app.pago-transferencia:}") String transferencia) {
         this.citas = citas;
@@ -45,61 +44,29 @@ public class PagoService {
         this.pasarela = pasarela;
         this.correo = correo;
         var configurados = new ArrayList<Respuestas.MedioDisponible>();
-        if (!yape.isBlank()) {
-            configurados.add(new Respuestas.MedioDisponible(MedioPago.YAPE, yape, false));
-        }
         if (!plin.isBlank()) {
-            configurados.add(new Respuestas.MedioDisponible(MedioPago.PLIN, plin, false));
+            configurados.add(new Respuestas.MedioDisponible(MedioPago.PLIN, plin));
         }
         if (!transferencia.isBlank()) {
-            configurados.add(new Respuestas.MedioDisponible(MedioPago.TRANSFERENCIA, transferencia, false));
+            configurados.add(new Respuestas.MedioDisponible(MedioPago.TRANSFERENCIA, transferencia));
         }
         this.medios = List.copyOf(configurados);
     }
 
     public List<Respuestas.MedioDisponible> medios() {
         var configurados = new ArrayList<>(medios);
-        var yape = yape();
-        if (yape.numero() != null) {
-            configurados.removeIf(item -> item.medio() == MedioPago.YAPE);
-            configurados.addFirst(new Respuestas.MedioDisponible(MedioPago.YAPE, yape.numero(), yape.tieneQr()));
-        }
         if (configurados.isEmpty()) {
-            for (var medio : List.of(MedioPago.YAPE, MedioPago.PLIN, MedioPago.TRANSFERENCIA)) {
-                configurados.add(new Respuestas.MedioDisponible(medio, "", false));
-            }
+            configurados.add(new Respuestas.MedioDisponible(MedioPago.PLIN, ""));
+            configurados.add(new Respuestas.MedioDisponible(MedioPago.TRANSFERENCIA, ""));
         }
-        configurados.add(new Respuestas.MedioDisponible(MedioPago.EFECTIVO, "Paga al llegar a la escuela.", false));
+        configurados.add(new Respuestas.MedioDisponible(MedioPago.EFECTIVO, "Paga al llegar a la escuela."));
         if (pasarela.habilitada()) {
             boolean prueba = pasarela.modoPrueba();
             String datos = prueba ? "Usa una tarjeta de prueba. Luego vuelve a la agenda y verifica el pago."
                 : "Paga en el sitio de Mercado Pago.";
-            configurados.addFirst(new Respuestas.MedioDisponible(MedioPago.MERCADO_PAGO, datos, false, prueba));
+            configurados.addFirst(new Respuestas.MedioDisponible(MedioPago.MERCADO_PAGO, datos, prueba));
         }
         return configurados;
-    }
-
-    public Respuestas.Yape yape() {
-        var configuracion = pagos.configuracionYape().orElseThrow();
-        return new Respuestas.Yape(configuracion.numero(), configuracion.tieneQr());
-    }
-
-    @Transactional
-    public Respuestas.Yape guardarYape(String numero, MultipartFile qr) {
-        if (numero == null || !numero.matches("9[0-9]{8}")) {
-            throw ApiException.invalido("Ingresa un número Yape de 9 dígitos que empiece por 9");
-        }
-        var imagen = qr == null ? null : validar(qr);
-        if (imagen != null && !imagen.mime().startsWith("image/")) {
-            throw ApiException.invalido("Sube el QR de Yape como imagen JPG o PNG");
-        }
-        pagos.guardarYape(numero, imagen);
-        return yape();
-    }
-
-    public Respuestas.ArchivoComprobante qrYape() {
-        return pagos.qrYape().map(MapeoRespuestas::comprobante)
-            .orElseThrow(() -> ApiException.noEncontrado("QR de Yape no configurado"));
     }
 
     public List<Respuestas.Pago> historial(long actor, long cita) {
@@ -115,14 +82,14 @@ public class PagoService {
     public Respuestas.Pago subir(long actor, long citaId, Solicitudes.CargaComprobante datos) {
         MedioPago medio = datos.medio();
         if (medio == MedioPago.MERCADO_PAGO) throw ApiException.invalido("Inicia el pago desde el checkout");
+        if (medios().stream().noneMatch(configurado -> configurado.medio() == medio)) {
+            throw ApiException.invalido("El medio de pago no está habilitado");
+        }
         boolean efectivo = medio == MedioPago.EFECTIVO;
         String referencia = efectivo ? "CAJA-" + java.util.UUID.randomUUID()
             : datos.operacion() == null ? "" : datos.operacion().trim().toUpperCase(Locale.ROOT);
         if (referencia.isEmpty() || referencia.length() > 60 || !referencia.matches("[A-Za-z0-9._/-]+")) {
             throw ApiException.invalido("Ingresa un número de operación válido de hasta 60 caracteres");
-        }
-        if (medios().stream().noneMatch(configurado -> configurado.medio() == medio)) {
-            throw ApiException.invalido("El medio de pago no está habilitado");
         }
         var comprobante = efectivo ? null : validar(datos.archivo());
         agenda.bloquearCambios();

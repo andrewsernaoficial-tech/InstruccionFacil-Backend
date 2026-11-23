@@ -95,33 +95,6 @@ public class PagoRepository {
         return buscar(id).orElseThrow();
     }
 
-    public Optional<ConfiguracionYape> configuracionYape() {
-        return jdbc.query("SELECT numero, qr_mime FROM configuracion_yape WHERE id=1",
-            (rs, n) -> new ConfiguracionYape(rs.getString("numero"), rs.getString("qr_mime") != null)).stream().findFirst();
-    }
-
-    public Optional<Comprobante> qrYape() {
-        return jdbc.query("SELECT qr, qr_mime FROM configuracion_yape WHERE id=1 AND qr_mime IS NOT NULL",
-            (rs, n) -> new Comprobante(rs.getBytes("qr"), rs.getString("qr_mime"))).stream().findFirst();
-    }
-
-    public void guardarYape(String numero, Comprobante archivo) {
-        if (archivo == null) {
-            jdbc.update("""
-                UPDATE configuracion_yape SET
-                    qr_mime=CASE WHEN numero=? THEN qr_mime ELSE NULL END, numero=? WHERE id=1
-                """, numero, numero);
-            return;
-        }
-        jdbc.update(conn -> {
-            var ps = conn.prepareStatement("UPDATE configuracion_yape SET numero=?, qr=?, qr_mime=? WHERE id=1");
-            ps.setString(1, numero);
-            ps.setBlob(2, new ByteArrayInputStream(archivo.contenido()), archivo.contenido().length);
-            ps.setString(3, archivo.mime());
-            return ps;
-        });
-    }
-
     public void revisar(long id, EstadoPago estado, Long revisor, String motivo, LocalDateTime ahora) {
         jdbc.update("UPDATE pago SET estado=?, revisor_id=?, motivo=?, revisado=? WHERE id=?",
             estado.name(), revisor, motivo, ahora, id);

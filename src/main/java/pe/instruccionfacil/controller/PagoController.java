@@ -61,27 +61,6 @@ public class PagoController {
         return pagos.medios();
     }
 
-    @GetMapping("/admin/pagos/yape")
-    @PreAuthorize("hasRole('ADMIN')")
-    Respuestas.Yape yape() {
-        return pagos.yape();
-    }
-
-    @PutMapping(path = "/admin/pagos/yape", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
-    Respuestas.Yape guardarYape(@RequestParam("numero") String numero,
-                                  @RequestParam(name = "qr", required = false) MultipartFile qr) {
-        return pagos.guardarYape(numero, qr);
-    }
-
-    @GetMapping("/pagos/yape/qr")
-    @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
-    ResponseEntity<byte[]> qrYape() {
-        var qr = pagos.qrYape();
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType(qr.mime()))
-            .cacheControl(CacheControl.noStore()).body(qr.contenido());
-    }
-
     @GetMapping("/citas/{id}/pagos")
     @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
     List<Respuestas.Pago> historial(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {

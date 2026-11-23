@@ -20,7 +20,6 @@ app:
   admin-password: ${APP_ADMIN_PASSWORD:}
   admin-reset-password: ${APP_ADMIN_RESET_PASSWORD:false}
   reservation-minutes: ${APP_RESERVATION_MINUTES:30}
-  pago-yape: ${APP_PAGO_YAPE:}
   pago-plin: ${APP_PAGO_PLIN:}
   pago-transferencia: ${APP_PAGO_TRANSFERENCIA:}
   mp-api-url: ${APP_MP_API_URL:https://api.mercadopago.com}

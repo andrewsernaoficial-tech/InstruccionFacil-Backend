@@ -61,7 +61,7 @@ java -version
 .\mvnw.cmd clean package
 $env:APP_ADMIN_EMAIL = 'admin@instruccionfacil.test'
 $env:APP_ADMIN_PASSWORD = Read-Host 'Contraseña inicial (10 caracteres, letras y números)' -MaskInput
-$env:APP_PAGO_YAPE = 'Número de demostración'
+$env:APP_PAGO_PLIN = 'Número de demostración'
 java -jar target/instruccionfacil-backend-0.1.0.jar
 ```
 
@@ -94,7 +94,7 @@ Para compilar el código necesitas un **JDK 21** y acceso a Maven Central. Ejecu
 }
 ```
 
-7. En `POST /api/v1/citas/{id}/pagos`, envía un formulario multipart con `medio` (`YAPE`, `PLIN` o `TRANSFERENCIA`), `operacion` y `archivo` (JPG, PNG o PDF de hasta 5 MB). Luego cambia a un token de administrador o recepción. Comprueba los datos con `GET /api/v1/admin/pagos/pendientes` y el archivo con `GET /api/v1/pagos/{id}/comprobante`. Para pago en efectivo, envía solo `medio=EFECTIVO` y confirma la recepción del dinero en caja.
+7. En `POST /api/v1/citas/{id}/pagos`, envía un formulario multipart con `medio` (`PLIN` o `TRANSFERENCIA`), `operacion` y `archivo` (JPG, PNG o PDF de hasta 5 MB). Luego cambia a un token de administrador o recepción. Comprueba los datos con `GET /api/v1/admin/pagos/pendientes` y el archivo con `GET /api/v1/pagos/{id}/comprobante`. Para pago en efectivo, envía solo `medio=EFECTIVO` y confirma la recepción del dinero en caja.
 8. Usa `PATCH /api/v1/admin/pagos/{id}/revision` con `{"aprobar":true}`. El identificador de esta llamada es el **ID del pago**. Comprueba en `GET /api/v1/citas/{id}` que la **cita** quedó `CONFIRMADA`. El alumno y el administrador pueden descargar el recibo interno en `GET /api/v1/pagos/{id}/recibo`.
 
 ## API y reglas
@@ -113,7 +113,7 @@ Para compilar el código necesitas un **JDK 21** y acceso a Maven Central. Ejecu
 - La API exige token Bearer salvo en registro, login, salud y documentación. El cierre de sesión se realiza quitando el token en el cliente. Su vigencia es de una hora.
 - El origen CORS por defecto es `http://localhost:4200`. Para integrar Angular desde otro origen, establece `APP_CORS_ORIGINS` con la lista separada por comas.
 
-El administrador puede guardar su número de Yape y adjuntar el QR oficial descargado de Yape en **Gestión de la escuela → Cobros**. Los alumnos pueden escanear ese QR desde su cita. El recibo PDF de la escuela es una constancia interna de pago.
+Si Mercado Pago ofrece Yape para la orden, el alumno puede elegirlo dentro del checkout. Los comprobantes de Yape registrados antes de este cambio se conservan en el historial. El recibo PDF de la escuela es una constancia interna de pago.
 
 ## Activar Oracle en AWS
 
@@ -135,7 +135,7 @@ java -jar target/instruccionfacil-backend-0.1.0.jar
 | Variable opcional | Uso |
 | --- | --- |
 | `APP_RESERVATION_MINUTES` | Plazo de revisión y pago entre 1 y 1440 minutos. |
-| `APP_PAGO_YAPE`, `APP_PAGO_PLIN`, `APP_PAGO_TRANSFERENCIA` | Datos que devuelve la API para cada medio habilitado. Si los tres están vacíos, la lista queda vacía y pueden cargarse comprobantes para pruebas con cualquiera de los tres medios. |
+| `APP_PAGO_PLIN`, `APP_PAGO_TRANSFERENCIA` | Datos que devuelve la API para cada medio habilitado. Si ambos están vacíos, se muestran Plin y transferencia sin datos de cobro para pruebas. |
 | `APP_CORS_ORIGINS` | Orígenes Angular permitidos. |
 | `SERVER_PORT` | Puerto HTTP interno, por defecto 8080. |
 | `SERVER_BIND_ADDRESS` | Dirección de escucha en perfil Oracle, por defecto `127.0.0.1`. Para exponer la API, publica HTTPS mediante un proxy y deja el listener de Oracle en acceso privado. |
