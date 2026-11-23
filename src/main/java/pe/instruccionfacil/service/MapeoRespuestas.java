@@ -35,7 +35,7 @@ final class MapeoRespuestas {
     static Respuestas.Cita cita(Modelo.Cita cita) {
         return new Respuestas.Cita(cita.id(), cita.alumnoId(), cita.instructorId(), cita.tipoClaseId(), cita.vehiculoId(),
             cita.placaPropia(), cita.marcaPropia(), cita.modeloPropio(), cita.transmision(), cita.canal(),
-            cita.inicio(), cita.fin(), cita.vence(), cita.monto(), cita.estado(), cita.motivo());
+            cita.inicio(), cita.fin(), cita.vence(), cita.monto(), cita.estado(), cita.motivo(), cita.nombreClase(), cita.nombreInstructor());
     }
 
     static Respuestas.Pago pago(Modelo.Pago pago) {

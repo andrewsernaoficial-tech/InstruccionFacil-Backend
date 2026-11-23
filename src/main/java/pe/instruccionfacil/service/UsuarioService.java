@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
@@ -21,6 +22,8 @@ import pe.instruccionfacil.dto.*;
 import pe.instruccionfacil.entity.Modelo.*;
 import pe.instruccionfacil.entity.Rol;
 import pe.instruccionfacil.repository.UsuarioRepository;
+import pe.instruccionfacil.repository.AgendaRepository;
+import pe.instruccionfacil.repository.AuditoriaRepository;
 
 @Service
 public class UsuarioService {
@@ -31,12 +34,17 @@ public class UsuarioService {
     private final JwtEncoder jwt;
     private final Clock reloj;
     private final String hashAlternativo;
+    private final AgendaRepository agenda;
+    private final AuditoriaRepository auditoria;
 
-    public UsuarioService(UsuarioRepository usuarios, PasswordEncoder passwords, JwtEncoder jwt, Clock reloj) {
+    public UsuarioService(UsuarioRepository usuarios, PasswordEncoder passwords, JwtEncoder jwt, Clock reloj,
+                          AgendaRepository agenda, AuditoriaRepository auditoria) {
         this.usuarios = usuarios;
         this.passwords = passwords;
         this.jwt = jwt;
         this.reloj = reloj;
+        this.agenda = agenda;
+        this.auditoria = auditoria;
         this.hashAlternativo = passwords.encode(java.util.UUID.randomUUID().toString());
     }
 
@@ -58,6 +66,31 @@ public class UsuarioService {
         return MapeoRespuestas.usuario(usuarios.crear(datos.nombre().trim(), normalizar(datos.email()), datos.telefono(),
             hash(datos.password()), datos.rol(), datos.dni(), datos.nacimiento(),
             datos.direccion() == null ? null : datos.direccion().trim()));
+    }
+
+    public List<Respuestas.Usuario> personal() {
+        return usuarios.personal().stream().map(MapeoRespuestas::usuario).toList();
+    }
+
+    @Transactional
+    public Respuestas.Usuario editarPersonal(long actor, long id, Solicitudes.EdicionPersonal datos) {
+        usuarios.personalParaEditar(id).orElseThrow(() -> ApiException.noEncontrado("Cuenta de personal no encontrada"));
+        usuarios.actualizar(id, datos.nombre().trim(), normalizar(datos.email()), datos.telefono(), datos.dni(),
+            datos.nacimiento(), datos.direccion() == null ? null : datos.direccion().trim());
+        auditoria.registrar(actor, "PERSONAL", id, "ACTUALIZADO", null);
+        return perfil(id);
+    }
+
+    @Transactional
+    public void borrarPersonal(long actor, long id) {
+        agenda.bloquearCambios();
+        var persona = usuarios.personalParaEditar(id)
+            .orElseThrow(() -> ApiException.noEncontrado("Cuenta de personal no encontrada"));
+        if (persona.rol() == Rol.INSTRUCTOR && agenda.tieneCitasActivas(id, LocalDateTime.now(reloj))) {
+            throw ApiException.conflicto("Reprograma o cancela las citas activas del instructor antes de eliminar su cuenta");
+        }
+        usuarios.eliminarPersonal(id);
+        auditoria.registrar(actor, "PERSONAL", id, "ELIMINADO", null);
     }
 
     @Transactional(noRollbackFor = ApiException.class)

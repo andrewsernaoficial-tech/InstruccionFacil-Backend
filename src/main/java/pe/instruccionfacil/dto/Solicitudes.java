@@ -28,6 +28,11 @@ public final class Solicitudes {
                            @Pattern(regexp="\\+?[0-9]{9,15}") String telefono,
                            @Pattern(regexp="[0-9]{8}") String dni,
                            @Past LocalDate nacimiento, @Size(max=240) String direccion) {}
+    public record EdicionPersonal(@NotBlank @Size(max=120) String nombre,
+                                  @NotBlank @Email @Size(max=254) String email,
+                                  @Pattern(regexp="\\+?[0-9]{9,15}") String telefono,
+                                  @Pattern(regexp="[0-9]{8}") String dni,
+                                  @Past LocalDate nacimiento, @Size(max=240) String direccion) {}
     public record Perfil(@NotBlank @Size(max=120) String nombre,
                          @Email @Size(max=254) String email,
                          @Pattern(regexp="\\+?[0-9]{9,15}") String telefono,

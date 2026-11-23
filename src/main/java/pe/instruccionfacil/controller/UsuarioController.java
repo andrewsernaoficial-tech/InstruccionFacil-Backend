@@ -2,6 +2,7 @@ package pe.instruccionfacil.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -48,6 +49,29 @@ public class UsuarioController {
     @ResponseStatus(HttpStatus.CREATED)
     Respuestas.Usuario personal(@Valid @RequestBody Solicitudes.Personal datos) {
         return usuarios.crearPersonal(datos);
+    }
+
+    @GetMapping("/admin/personal")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    List<Respuestas.Usuario> listaPersonal() {
+        return usuarios.personal();
+    }
+
+    @PutMapping("/admin/personal/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    Respuestas.Usuario editarPersonal(@AuthenticationPrincipal Jwt jwt, @PathVariable long id,
+                                      @Valid @RequestBody Solicitudes.EdicionPersonal datos) {
+        return usuarios.editarPersonal(Long.parseLong(jwt.getSubject()), id, datos);
+    }
+
+    @DeleteMapping("/admin/personal/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void borrarPersonal(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        usuarios.borrarPersonal(Long.parseLong(jwt.getSubject()), id);
     }
 
     @GetMapping("/admin/clientes/busqueda")

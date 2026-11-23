@@ -1,6 +1,7 @@
 package pe.instruccionfacil.service;
 
 import java.time.Clock;
+import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,6 +59,14 @@ public class CatalogoService {
         return MapeoRespuestas.tipoClase(clase(id));
     }
 
+    @Transactional
+    public void borrarClase(long actor, long id) {
+        agenda.bloquearCambios();
+        clase(id);
+        boolean archivada = catalogo.borrarClase(id);
+        auditoria.registrar(actor, "TIPO_CLASE", id, "ELIMINADO", archivada ? "Con historial de citas" : null);
+    }
+
     public List<Respuestas.Vehiculo> flota() {
         return catalogo.flota().stream().map(MapeoRespuestas::vehiculo).toList();
     }
@@ -102,7 +111,7 @@ public class CatalogoService {
     }
 
     void validarInstructor(long id) {
-        if (perfiles.obtener(id).rol() != Rol.INSTRUCTOR) {
+        if (perfiles.obtener(id).rol() != Rol.INSTRUCTOR || !usuarios.estaHabilitado(id)) {
             throw ApiException.invalido("Selecciona una cuenta con rol INSTRUCTOR");
         }
     }
@@ -114,6 +123,19 @@ public class CatalogoService {
     List<Horario> ventanasInstructor(long instructor, LocalDate dia) {
         validarInstructor(instructor);
         return catalogo.horarios(instructor, dia.atStartOfDay(), dia.plusDays(1).atStartOfDay());
+    }
+
+    List<Horario> franjasContinuas(long instructor, LocalDateTime inicio, LocalDateTime fin) {
+        var franjas = new ArrayList<Horario>();
+        for (var horario : catalogo.horarios(instructor, inicio, fin)) {
+            if (franjas.isEmpty() || horario.inicio().isAfter(franjas.getLast().fin())) {
+                franjas.add(horario);
+            } else if (horario.fin().isAfter(franjas.getLast().fin())) {
+                var anterior = franjas.removeLast();
+                franjas.add(new Horario(anterior.id(), instructor, anterior.inicio(), horario.fin()));
+            }
+        }
+        return franjas;
     }
 
     @Transactional

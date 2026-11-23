@@ -53,6 +53,13 @@ public class CatalogoController {
         return catalogo.guardarClase(Long.parseLong(jwt.getSubject()), id, datos);
     }
 
+    @DeleteMapping("/admin/tipos-clase/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void borrarClase(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        catalogo.borrarClase(Long.parseLong(jwt.getSubject()), id);
+    }
+
     @GetMapping("/admin/vehiculos")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
     List<Respuestas.Vehiculo> vehiculos() {

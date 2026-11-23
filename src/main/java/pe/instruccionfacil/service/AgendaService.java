@@ -60,7 +60,8 @@ public class AgendaService {
         }
         var ahora = LocalDateTime.now(reloj);
         var disponibles = new ArrayList<Disponibilidad>();
-        for (var ventana : configuracion.ventanasInstructor(instructor, dia)) {
+        configuracion.validarInstructor(instructor);
+        for (var ventana : configuracion.franjasContinuas(instructor, dia.atStartOfDay(), dia.plusDays(1).atStartOfDay())) {
             LocalDateTime inicio = ventana.inicio().truncatedTo(ChronoUnit.HOURS)
                 .plusMinutes((ventana.inicio().getMinute() / 15) * 15L);
             if (inicio.isBefore(ventana.inicio())) {
@@ -184,7 +185,9 @@ public class AgendaService {
             throw ApiException.invalido("Selecciona un inicio futuro en intervalos de 15 minutos");
         }
         configuracion.validarInstructor(instructor);
-        if (!catalogo.cubreHorario(instructor, inicio, fin) || agenda.instructorOcupado(instructor, inicio, fin, ahora, excluirCita)) {
+        boolean cubierto = configuracion.franjasContinuas(instructor, inicio, fin).stream()
+            .anyMatch(franja -> !franja.inicio().isAfter(inicio) && !franja.fin().isBefore(fin));
+        if (!cubierto || agenda.instructorOcupado(instructor, inicio, fin, ahora, excluirCita)) {
             throw ApiException.conflicto("El instructor no está disponible en ese horario");
         }
         if (agenda.alumnoOcupado(alumno, inicio, fin, ahora, excluirCita)) {

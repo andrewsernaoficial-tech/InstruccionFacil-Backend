@@ -32,12 +32,12 @@ public class CatalogoRepository {
     }
 
     public List<TipoClase> clases(boolean incluirInactivas) {
-        String filtro = incluirInactivas ? "" : " WHERE activo=1";
+        String filtro = incluirInactivas ? " WHERE eliminado=0" : " WHERE eliminado=0 AND activo=1";
         return jdbc.query("SELECT * FROM tipo_clase" + filtro + " ORDER BY nombre, id", TIPO);
     }
 
     public Optional<TipoClase> clase(long id) {
-        return jdbc.query("SELECT * FROM tipo_clase WHERE id=?", TIPO, id).stream().findFirst();
+        return jdbc.query("SELECT * FROM tipo_clase WHERE id=? AND eliminado=0", TIPO, id).stream().findFirst();
     }
 
     public long crearClase(String nombre, int minutos, BigDecimal tarifa, boolean activo) {
@@ -50,6 +50,16 @@ public class CatalogoRepository {
     public void editarClase(long id, String nombre, int minutos, BigDecimal tarifa, boolean activo) {
         jdbc.update("UPDATE tipo_clase SET nombre=?, minutos=?, tarifa=?, activo=? WHERE id=?",
             nombre, minutos, tarifa, activo ? 1 : 0, id);
+    }
+
+    public boolean borrarClase(long id) {
+        int borradas = jdbc.update("""
+            DELETE FROM tipo_clase WHERE id=? AND eliminado=0
+            AND NOT EXISTS (SELECT 1 FROM cita WHERE tipo_clase_id=?)
+            """, id, id);
+        if (borradas != 0) return false;
+        jdbc.update("UPDATE tipo_clase SET activo=0, eliminado=1 WHERE id=?", id);
+        return true;
     }
 
     public List<Vehiculo> flota() {
@@ -80,12 +90,6 @@ public class CatalogoRepository {
         return jdbc.query("""
             SELECT * FROM horario_instructor WHERE instructor_id=? AND inicio < ? AND fin > ? ORDER BY inicio
             """, HORARIO, instructor, fin, inicio);
-    }
-
-    public boolean cubreHorario(long instructor, LocalDateTime inicio, LocalDateTime fin) {
-        return jdbc.queryForObject("""
-            SELECT COUNT(*) FROM horario_instructor WHERE instructor_id=? AND inicio <= ? AND fin >= ?
-            """, Long.class, instructor, inicio, fin) > 0;
     }
 
     public long crearHorario(long instructor, LocalDateTime inicio, LocalDateTime fin) {

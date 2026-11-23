@@ -31,11 +31,31 @@ public class UsuarioRepository {
     }
 
     public Optional<Usuario> buscarAcceso(String acceso, boolean bloquear) {
-        String sql = "SELECT * FROM usuario WHERE email = ? OR telefono = ?";
+        String sql = "SELECT * FROM usuario WHERE eliminado=0 AND (email = ? OR telefono = ?)";
         if (bloquear) {
             sql += " FOR UPDATE";
         }
         return jdbc.query(sql, FILA, acceso, acceso).stream().findFirst();
+    }
+
+    public boolean estaHabilitado(long id) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM usuario WHERE id=? AND eliminado=0", Long.class, id) > 0;
+    }
+
+    public List<Usuario> personal() {
+        return jdbc.query("""
+            SELECT * FROM usuario WHERE eliminado=0 AND rol IN ('INSTRUCTOR','RECEPCION') ORDER BY nombre,id
+            """, FILA);
+    }
+
+    public Optional<Usuario> personalParaEditar(long id) {
+        return jdbc.query("""
+            SELECT * FROM usuario WHERE id=? AND eliminado=0 AND rol IN ('INSTRUCTOR','RECEPCION') FOR UPDATE
+            """, FILA, id).stream().findFirst();
+    }
+
+    public void eliminarPersonal(long id) {
+        jdbc.update("UPDATE usuario SET eliminado=1 WHERE id=?", id);
     }
 
     public Usuario crear(String nombre, String email, String telefono, String hash, Rol rol) {
@@ -76,11 +96,11 @@ public class UsuarioRepository {
                            LocalDate nacimiento, String direccion) {
         jdbc.update("""
             UPDATE usuario SET nombre=?, email=?, telefono=?, dni=?, nacimiento=?, direccion=? WHERE id=?
-            """, nombre, email, telefono, dni, java.sql.Date.valueOf(nacimiento), direccion, id);
+            """, nombre, email, telefono, dni, nacimiento == null ? null : java.sql.Date.valueOf(nacimiento), direccion, id);
     }
 
     public List<Instructor> instructores() {
-        return jdbc.query("SELECT id, nombre FROM usuario WHERE rol = 'INSTRUCTOR' ORDER BY nombre, id",
+        return jdbc.query("SELECT id, nombre FROM usuario WHERE rol = 'INSTRUCTOR' AND eliminado=0 ORDER BY nombre, id",
             (rs, fila) -> new Instructor(rs.getLong("id"), rs.getString("nombre")));
     }
 }

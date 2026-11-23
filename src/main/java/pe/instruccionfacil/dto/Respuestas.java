@@ -28,7 +28,7 @@ public final class Respuestas {
     public record Cita(long id, long alumnoId, long instructorId, long tipoClaseId, Long vehiculoId,
                        String placaPropia, String marcaPropia, String modeloPropio, Transmision transmision, Canal canal,
                        LocalDateTime inicio, LocalDateTime fin, LocalDateTime vence, BigDecimal monto,
-                       EstadoCita estado, String motivo) {}
+                       EstadoCita estado, String motivo, String nombreClase, String nombreInstructor) {}
     public record Pago(long id, long citaId, MedioPago medio, String operacion, BigDecimal monto,
                        EstadoPago estado, LocalDateTime creado, LocalDateTime revisado, Long revisorId, String motivo) {}
     public record MedioDisponible(MedioPago medio, String datos, boolean tieneQr) {}

@@ -25,6 +25,11 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
@@ -36,6 +41,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import pe.instruccionfacil.repository.UsuarioRepository;
 
 @Configuration
 @EnableMethodSecurity
@@ -110,9 +116,20 @@ public class SeguridadConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(SecretKey key) {
+    JwtDecoder jwtDecoder(SecretKey key, UsuarioRepository usuarios) {
         var decoder = NimbusJwtDecoder.withSecretKey(key).build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(EMISOR));
+        OAuth2TokenValidator<Jwt> cuentaHabilitada = jwt -> {
+            try {
+                if (usuarios.estaHabilitado(Long.parseLong(jwt.getSubject()))) {
+                    return OAuth2TokenValidatorResult.success();
+                }
+            } catch (NumberFormatException ex) {
+                return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Cuenta inválida", null));
+            }
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Cuenta inhabilitada", null));
+        };
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+            JwtValidators.createDefaultWithIssuer(EMISOR), cuentaHabilitada));
         return decoder;
     }
 

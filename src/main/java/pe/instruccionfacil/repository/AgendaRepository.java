@@ -16,13 +16,18 @@ public class AgendaRepository {
     private static final String OCUPA = """
         (c.estado IN ('CONFIRMADA','EN_CURSO') OR (c.estado='PENDIENTE_PAGO' AND c.vence > ?))
         """;
+    private static final String CONSULTA_CITAS = """
+        SELECT c.*, t.nombre AS nombre_clase, u.nombre AS nombre_instructor
+        FROM cita c JOIN tipo_clase t ON t.id=c.tipo_clase_id JOIN usuario u ON u.id=c.instructor_id
+        """;
     private static final RowMapper<Cita> FILA = (rs, n) -> new Cita(rs.getLong("id"), rs.getLong("alumno_id"),
         rs.getLong("instructor_id"), rs.getLong("tipo_clase_id"), rs.getObject("vehiculo_id", Long.class),
         rs.getString("placa_propia"), rs.getString("marca_propia"), rs.getString("modelo_propio"),
         Transmision.valueOf(rs.getString("transmision")), Canal.valueOf(rs.getString("canal")),
         rs.getObject("inicio", LocalDateTime.class), rs.getObject("fin", LocalDateTime.class),
         rs.getObject("vence", LocalDateTime.class), rs.getBigDecimal("monto"),
-        EstadoCita.valueOf(rs.getString("estado")), rs.getString("motivo"));
+        EstadoCita.valueOf(rs.getString("estado")), rs.getString("motivo"),
+        rs.getString("nombre_clase"), rs.getString("nombre_instructor"));
 
     private final JdbcTemplate jdbc;
     private final Identificadores ids;
@@ -37,19 +42,19 @@ public class AgendaRepository {
     }
 
     public Optional<Cita> buscar(long id) {
-        return jdbc.query("SELECT * FROM cita WHERE id=?", FILA, id).stream().findFirst();
+        return jdbc.query(CONSULTA_CITAS + "WHERE c.id=?", FILA, id).stream().findFirst();
     }
 
     public List<Cita> listar(Usuario usuario, LocalDateTime inicio, LocalDateTime fin) {
         return switch (usuario.rol()) {
-            case CLIENTE -> jdbc.query("""
-                SELECT * FROM cita WHERE alumno_id=? AND inicio >= ? AND inicio < ? ORDER BY inicio, id
+            case CLIENTE -> jdbc.query(CONSULTA_CITAS + """
+                WHERE c.alumno_id=? AND c.inicio >= ? AND c.inicio < ? ORDER BY c.inicio, c.id
                 """, FILA, usuario.id(), inicio, fin);
-            case INSTRUCTOR -> jdbc.query("""
-                SELECT * FROM cita WHERE instructor_id=? AND inicio >= ? AND inicio < ? ORDER BY inicio, id
+            case INSTRUCTOR -> jdbc.query(CONSULTA_CITAS + """
+                WHERE c.instructor_id=? AND c.inicio >= ? AND c.inicio < ? ORDER BY c.inicio, c.id
                 """, FILA, usuario.id(), inicio, fin);
-            case ADMIN, RECEPCION -> jdbc.query("""
-                SELECT * FROM cita WHERE inicio >= ? AND inicio < ? ORDER BY inicio, id
+            case ADMIN, RECEPCION -> jdbc.query(CONSULTA_CITAS + """
+                WHERE c.inicio >= ? AND c.inicio < ? ORDER BY c.inicio, c.id
                 """, FILA, inicio, fin);
         };
     }
@@ -59,6 +64,14 @@ public class AgendaRepository {
         return jdbc.queryForObject("""
             SELECT COUNT(*) FROM cita c WHERE c.instructor_id=? AND c.id <> ? AND c.inicio < ? AND c.fin > ? AND
             """ + OCUPA, Long.class, instructor, excluirCita, fin, inicio, ahora) > 0;
+    }
+
+    public boolean tieneCitasActivas(long instructor, LocalDateTime ahora) {
+        return jdbc.queryForObject("""
+            SELECT COUNT(*) FROM cita c WHERE c.instructor_id=? AND
+            (c.estado='EN_CURSO' OR (c.fin > ? AND
+            (c.estado='CONFIRMADA' OR (c.estado='PENDIENTE_PAGO' AND c.vence > ?))))
+            """, Long.class, instructor, ahora, ahora) > 0;
     }
 
     public boolean alumnoOcupado(long alumno, LocalDateTime inicio, LocalDateTime fin,
