@@ -1,6 +1,8 @@
 package pe.instruccionfacil.repository;
 
 import java.io.ByteArrayInputStream;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +37,19 @@ public class PagoRepository {
 
     public List<Pago> deCita(long cita) {
         return jdbc.query("SELECT " + COLUMNAS + " FROM pago p WHERE p.cita_id=? ORDER BY p.creado, p.id", FILA, cita);
+    }
+
+    public record Ingreso(LocalDate fecha, MedioPago medio, BigDecimal monto, long pagos) {}
+
+    public List<Ingreso> ingresos(LocalDateTime desde, LocalDateTime hasta) {
+        return jdbc.query("""
+            SELECT EXTRACT(YEAR FROM revisado) AS anio, EXTRACT(MONTH FROM revisado) AS mes,
+                   EXTRACT(DAY FROM revisado) AS dia, medio, SUM(monto) AS total, COUNT(*) AS cantidad
+            FROM pago WHERE estado='APROBADO' AND revisado>=? AND revisado<?
+            GROUP BY EXTRACT(YEAR FROM revisado), EXTRACT(MONTH FROM revisado),
+                     EXTRACT(DAY FROM revisado), medio
+            """, (rs, fila) -> new Ingreso(LocalDate.of(rs.getInt("anio"), rs.getInt("mes"), rs.getInt("dia")),
+                MedioPago.valueOf(rs.getString("medio")), rs.getBigDecimal("total"), rs.getLong("cantidad")), desde, hasta);
     }
 
     public List<Pago> pendientes(LocalDateTime ahora) {
@@ -107,7 +122,7 @@ public class PagoRepository {
         });
     }
 
-    public void revisar(long id, EstadoPago estado, long revisor, String motivo, LocalDateTime ahora) {
+    public void revisar(long id, EstadoPago estado, Long revisor, String motivo, LocalDateTime ahora) {
         jdbc.update("UPDATE pago SET estado=?, revisor_id=?, motivo=?, revisado=? WHERE id=?",
             estado.name(), revisor, motivo, ahora, id);
     }

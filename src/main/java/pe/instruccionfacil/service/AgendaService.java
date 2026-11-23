@@ -31,12 +31,13 @@ public class AgendaService {
     private final CatalogoService configuracion;
     private final UsuarioService usuarios;
     private final PagoRepository pagos;
+    private final CheckoutRepository checkout;
     private final AuditoriaRepository auditoria;
     private final Clock reloj;
     private final int vigencia;
 
     public AgendaService(AgendaRepository agenda, CatalogoRepository catalogo, CatalogoService configuracion,
-                         UsuarioService usuarios, PagoRepository pagos, AuditoriaRepository auditoria, Clock reloj,
+                         UsuarioService usuarios, PagoRepository pagos, CheckoutRepository checkout, AuditoriaRepository auditoria, Clock reloj,
                          @Value("${app.reservation-minutes}") int vigencia) {
         if (vigencia < 1 || vigencia > 1440) {
             throw new IllegalArgumentException("APP_RESERVATION_MINUTES debe estar entre 1 y 1440");
@@ -46,6 +47,7 @@ public class AgendaService {
         this.configuracion = configuracion;
         this.usuarios = usuarios;
         this.pagos = pagos;
+        this.checkout = checkout;
         this.auditoria = auditoria;
         this.reloj = reloj;
         this.vigencia = vigencia;
@@ -163,6 +165,7 @@ public class AgendaService {
             || (cita.estado() != EstadoCita.CONFIRMADA && !pendienteVigente(cita, ahora))) {
             throw ApiException.conflicto("Solo puedes reprogramar citas vigentes que aún no comienzan");
         }
+        comprobarCheckout(id, ahora);
         boolean efectivoPendiente = cita.estado() == EstadoCita.PENDIENTE_PAGO && pagos.deCita(id).stream()
             .anyMatch(pago -> pago.medio() == MedioPago.EFECTIVO && pago.estado() == EstadoPago.EN_REVISION);
         if (cita.estado() == EstadoCita.PENDIENTE_PAGO && !efectivoPendiente && datos.inicio().isBefore(cita.vence())) {
@@ -225,6 +228,7 @@ public class AgendaService {
                 || (cita.estado() != EstadoCita.CONFIRMADA && !pendienteVigente(cita, ahora))) {
                 throw ApiException.conflicto("La cita ya no se puede cancelar");
             }
+            comprobarCheckout(id, ahora);
             pagos.cerrarPendientes(id, actor, "Cita cancelada", ahora);
         } else {
             if (usuario.rol() == Rol.CLIENTE) {
@@ -242,6 +246,12 @@ public class AgendaService {
         agenda.cambiarEstado(id, datos.estado(), motivo);
         auditoria.registrar(actor, "CITA", id, datos.estado().name(), motivo);
         return MapeoRespuestas.cita(agenda.buscar(id).orElseThrow());
+    }
+
+    private void comprobarCheckout(long citaId, LocalDateTime ahora) {
+        if (checkout.porCita(citaId, false).filter(item -> item.abierto(ahora)).isPresent()) {
+            throw ApiException.conflicto("La cita tiene un pago de Mercado Pago en curso");
+        }
     }
 
     static boolean pendienteVigente(Cita cita, LocalDateTime ahora) {

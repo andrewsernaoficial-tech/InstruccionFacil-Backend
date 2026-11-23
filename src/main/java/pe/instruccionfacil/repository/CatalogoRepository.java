@@ -63,11 +63,11 @@ public class CatalogoRepository {
     }
 
     public List<Vehiculo> flota() {
-        return jdbc.query("SELECT * FROM vehiculo ORDER BY placa, id", VEHICULO);
+        return jdbc.query("SELECT * FROM vehiculo WHERE eliminado=0 ORDER BY placa, id", VEHICULO);
     }
 
     public Optional<Vehiculo> vehiculo(long id) {
-        return jdbc.query("SELECT * FROM vehiculo WHERE id=?", VEHICULO, id).stream().findFirst();
+        return jdbc.query("SELECT * FROM vehiculo WHERE id=? AND eliminado=0", VEHICULO, id).stream().findFirst();
     }
 
     public long crearVehiculo(String placa, String descripcion, Transmision transmision, boolean activo) {
@@ -80,6 +80,10 @@ public class CatalogoRepository {
     public void editarVehiculo(long id, String placa, String descripcion, Transmision transmision, boolean activo) {
         jdbc.update("UPDATE vehiculo SET placa=?, descripcion=?, transmision=?, activo=? WHERE id=?",
             placa, descripcion, transmision.name(), activo ? 1 : 0, id);
+    }
+
+    public void retirarVehiculo(long id) {
+        jdbc.update("UPDATE vehiculo SET activo=0, eliminado=1 WHERE id=?", id);
     }
 
     public Optional<Horario> horario(long id) {

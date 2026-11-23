@@ -100,6 +100,17 @@ public class CatalogoService {
         return MapeoRespuestas.vehiculo(vehiculo(id));
     }
 
+    @Transactional
+    public void retirarVehiculo(long actor, long id) {
+        agenda.bloquearCambios();
+        vehiculo(id);
+        if (agenda.vehiculoTieneCitas(id, LocalDateTime.now(reloj))) {
+            throw ApiException.conflicto("El vehículo tiene citas activas. Reprograma esas citas antes de retirarlo");
+        }
+        catalogo.retirarVehiculo(id);
+        auditoria.registrar(actor, "VEHICULO", id, "RETIRADO", null);
+    }
+
     private void validarPlacaFlota(String placa, LocalDateTime ahora) {
         if (agenda.placaPropiaOcupada(placa, ahora, LocalDateTime.of(9999, 1, 1, 0, 0), ahora, 0)) {
             throw ApiException.conflicto("La placa está registrada en una cita activa como vehículo propio");

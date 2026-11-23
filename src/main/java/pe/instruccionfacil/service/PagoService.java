@@ -28,9 +28,11 @@ public class PagoService {
     private final Clock reloj;
     private final UsuarioService usuarios;
     private final List<Respuestas.MedioDisponible> medios;
+    private final PasarelaService pasarela;
+    private final ReciboCorreoService correo;
 
     public PagoService(AgendaService citas, AgendaRepository agenda, PagoRepository pagos,
-                       AuditoriaRepository auditoria, Clock reloj, UsuarioService usuarios,
+                       AuditoriaRepository auditoria, Clock reloj, UsuarioService usuarios, PasarelaService pasarela, ReciboCorreoService correo,
                        @Value("${app.pago-yape:}") String yape,
                        @Value("${app.pago-plin:}") String plin,
                        @Value("${app.pago-transferencia:}") String transferencia) {
@@ -40,6 +42,8 @@ public class PagoService {
         this.auditoria = auditoria;
         this.reloj = reloj;
         this.usuarios = usuarios;
+        this.pasarela = pasarela;
+        this.correo = correo;
         var configurados = new ArrayList<Respuestas.MedioDisponible>();
         if (!yape.isBlank()) {
             configurados.add(new Respuestas.MedioDisponible(MedioPago.YAPE, yape, false));
@@ -66,6 +70,9 @@ public class PagoService {
             }
         }
         configurados.add(new Respuestas.MedioDisponible(MedioPago.EFECTIVO, "Paga al llegar a la escuela.", false));
+        if (pasarela.habilitada()) {
+            configurados.addFirst(new Respuestas.MedioDisponible(MedioPago.MERCADO_PAGO, "Paga en el sitio de Mercado Pago.", false));
+        }
         return configurados;
     }
 
@@ -104,6 +111,7 @@ public class PagoService {
     @Transactional
     public Respuestas.Pago subir(long actor, long citaId, Solicitudes.CargaComprobante datos) {
         MedioPago medio = datos.medio();
+        if (medio == MedioPago.MERCADO_PAGO) throw ApiException.invalido("Inicia el pago desde el checkout");
         boolean efectivo = medio == MedioPago.EFECTIVO;
         String referencia = efectivo ? "CAJA-" + java.util.UUID.randomUUID()
             : datos.operacion() == null ? "" : datos.operacion().trim().toUpperCase(Locale.ROOT);
@@ -119,6 +127,9 @@ public class PagoService {
         var ahora = LocalDateTime.now(reloj);
         if (!AgendaService.pendienteVigente(cita, ahora) || !cita.inicio().isAfter(ahora)) {
             throw ApiException.conflicto("La cita no admite comprobantes o venció el plazo de pago");
+        }
+        if (pasarela.enCurso(citaId, ahora)) {
+            throw ApiException.conflicto("La cita tiene un pago de Mercado Pago en curso");
         }
         if (pagos.hayPagoEnRevision(citaId)) {
             throw ApiException.conflicto("Esta cita ya tiene un pago en revisión");
@@ -153,6 +164,7 @@ public class PagoService {
         if (datos.aprobar()) {
             agenda.cambiarEstado(cita.id(), EstadoCita.CONFIRMADA, null);
             auditoria.registrar(actor, "CITA", cita.id(), "CONFIRMADA", null);
+            correo.programar(pago, cita);
         }
         return MapeoRespuestas.pago(pago(id));
     }

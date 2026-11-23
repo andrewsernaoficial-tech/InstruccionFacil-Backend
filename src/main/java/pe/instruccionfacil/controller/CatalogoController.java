@@ -80,6 +80,13 @@ public class CatalogoController {
         return catalogo.guardarVehiculo(Long.parseLong(jwt.getSubject()), id, datos);
     }
 
+    @DeleteMapping("/admin/vehiculos/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void retirarVehiculo(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        catalogo.retirarVehiculo(Long.parseLong(jwt.getSubject()), id);
+    }
+
     @GetMapping("/admin/vehiculos/{id}/bloqueos")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
     List<Respuestas.Bloqueo> bloqueos(@PathVariable long id) {

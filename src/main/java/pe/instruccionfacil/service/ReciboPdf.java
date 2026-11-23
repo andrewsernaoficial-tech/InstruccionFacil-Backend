@@ -22,6 +22,7 @@ final class ReciboPdf {
             case PLIN -> "Plin";
             case TRANSFERENCIA -> "Transferencia";
             case EFECTIVO -> "Efectivo";
+            case MERCADO_PAGO -> "Mercado Pago";
         };
         String alumnoLinea = alumno.length() <= 72 ? alumno : alumno.substring(0, 72);
         String alumnoContinuacion = alumno.length() <= 72 ? "" : alumno.substring(72);

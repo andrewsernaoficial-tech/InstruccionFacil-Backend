@@ -39,4 +39,11 @@ public final class Respuestas {
                          String detalle, LocalDateTime fecha) {}
     public record EstadoSalud(String status) {}
     public record ErrorApi(String mensaje, List<String> campos) {}
+    public record EnlaceCheckout(String enlace) {}
+    public record EnvioCorreo(String estado) {}
+    public record IngresoDiario(LocalDate fecha, BigDecimal monto, long pagos) {}
+    public record IngresoMedio(MedioPago medio, BigDecimal monto, long pagos) {}
+    public record IncidenciaPago(long citaId, String orden, String detalle, LocalDateTime fecha) {}
+    public record Ingresos(BigDecimal total, long pagos, List<IngresoDiario> dias, List<IngresoMedio> medios,
+                           List<IncidenciaPago> incidencias) {}
 }

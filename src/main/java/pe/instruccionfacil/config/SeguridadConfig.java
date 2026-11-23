@@ -65,7 +65,7 @@ public class SeguridadConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/api/v1/health", "/swagger-ui/**", "/swagger-ui.html",
                     "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/registro", "/api/v1/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/registro", "/api/v1/auth/login", "/api/v1/webhooks/mercado-pago").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(errors -> errors
                 .authenticationEntryPoint((req, res, ex) -> error(res, 401, "Autenticación requerida"))

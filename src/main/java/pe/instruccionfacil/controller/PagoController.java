@@ -18,6 +18,8 @@ import pe.instruccionfacil.dto.Respuestas;
 import pe.instruccionfacil.dto.Solicitudes;
 import pe.instruccionfacil.entity.MedioPago;
 import pe.instruccionfacil.service.PagoService;
+import pe.instruccionfacil.service.PasarelaService;
+import pe.instruccionfacil.service.ReciboCorreoService;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -25,8 +27,26 @@ import pe.instruccionfacil.service.PagoService;
 public class PagoController {
     private final PagoService pagos;
 
-    public PagoController(PagoService pagos) {
+    private final PasarelaService pasarela;
+    private final ReciboCorreoService correo;
+
+    public PagoController(PagoService pagos, PasarelaService pasarela, ReciboCorreoService correo) {
         this.pagos = pagos;
+        this.pasarela = pasarela;
+        this.correo = correo;
+    }
+
+    @PostMapping("/citas/{id}/pagos/checkout")
+    @PreAuthorize("hasRole('CLIENTE')")
+    Respuestas.EnlaceCheckout checkout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        return pasarela.abrir(Long.parseLong(jwt.getSubject()), id);
+    }
+
+    @PostMapping("/pagos/{id}/recibo/correo")
+    @PreAuthorize("hasAnyRole('CLIENTE','ADMIN','RECEPCION')")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    Respuestas.EnvioCorreo enviarRecibo(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        return correo.solicitar(Long.parseLong(jwt.getSubject()), id);
     }
 
     @GetMapping("/pagos/medios")

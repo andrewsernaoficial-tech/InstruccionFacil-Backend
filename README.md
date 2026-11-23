@@ -141,3 +141,24 @@ java -jar target/instruccionfacil-backend-0.1.0.jar
 | `SERVER_BIND_ADDRESS` | Dirección de escucha en perfil Oracle, por defecto `127.0.0.1`. Para exponer la API, publica HTTPS mediante un proxy y deja el listener de Oracle en acceso privado. |
 
 El alcance de esta versión comprende el flujo de reserva, revisión manual del pago y administración de la agenda. Quedan pendientes la API de WhatsApp, recuperación de contraseña, reembolsos, reportes exportables y facturación electrónica.
+
+## Pagos en línea, Gmail y DNI
+
+Las integraciones se configuran en el backend. Usa variables de entorno en IntelliJ o rellena tu `.env` para Docker Compose. Nunca agregues credenciales al frontend ni al repositorio.
+
+| Integración | Variables | Configuración |
+| --- | --- | --- |
+| Mercado Pago Checkout Pro, Orders API | `APP_MP_TOKEN`, `APP_MP_WEBHOOK_SECRET`, `APP_MP_FRONTEND_URL` | Usa una aplicación vendedora peruana y sus credenciales de prueba primero. Indica la URL HTTPS del frontend. En el panel de Mercado Pago, registra el evento **Order (Mercado Pago)** y la URL pública HTTPS del backend terminada en `/api/v1/webhooks/mercado-pago`. |
+| Gmail API | `APP_GMAIL_CLIENT_ID`, `APP_GMAIL_CLIENT_SECRET`, `APP_GMAIL_REFRESH_TOKEN`, `APP_GMAIL_REMITENTE` | Habilita Gmail API y autoriza el remitente con OAuth 2.0, acceso sin conexión y el alcance `https://www.googleapis.com/auth/gmail.send`. El remitente debe ser la cuenta autorizada o un alias habilitado. |
+| DNI peruano | `APP_DNI_TOKEN`, `APP_DNI_OBLIGATORIO` | Usa el token de Endpoint.pe. Configura `APP_DNI_OBLIGATORIO=true` si el entorno debe impedir altas y cambios de identidad cuando no hay credenciales. Con token configurado, una falla de consulta impide completar la operación y permite reintentar. |
+
+### Flujo de cobro
+
+- El alumno abre checkout con `POST /api/v1/citas/{id}/pagos/checkout`. El monto sale de la reserva y el backend reutiliza la orden para impedir cobros duplicados por reintentos de la aplicación. Durante la orden vigente se bloquean otros medios, la cancelación y la reprogramación de esa cita.
+- El backend verifica la firma del webhook y consulta la orden con el token privado. Solo confirma automáticamente una orden acreditada con el importe y la moneda PEN correctos de una cita vigente. El regreso del navegador sirve para abrir la agenda.
+- El PDF se encola al aprobar un pago si Gmail está configurado y hay correo registrado. `POST /api/v1/pagos/{id}/recibo/correo` permite verificar el estado y encolar un recibo pendiente de enviar. El destinatario se toma del perfil del alumno.
+- La comparación de DNI usa el nombre completo tal como figura en el documento y omite diferencias de mayúsculas, tildes y puntuación. La consulta verifica la coincidencia registral. No se devuelven los datos obtenidos del proveedor.
+- En **Ingresos**, administración ve el total bruto por fecha de aprobación (hora de Lima) y los medios de pago. El total corresponde al importe originalmente aprobado. Las discrepancias, pagos tardíos y reembolsos notificados aparecen para conciliación con Mercado Pago.
+- En **Gestión de la escuela → Flota**, administración puede registrar, editar, bloquear y retirar vehículos. Los vehículos con citas activas requieren reprogramarlas antes de retirarlos.
+
+Documentación de proveedores: [Mercado Pago Orders](https://www.mercadopago.com.pe/developers/es/docs/checkout-pro-orders/create-order), [notificaciones de Mercado Pago](https://www.mercadopago.com.pe/developers/es/docs/checkout-pro-orders/notifications), [envío por Gmail](https://developers.google.com/workspace/gmail/api/guides/sending), [OAuth de Google](https://developers.google.com/identity/protocols/oauth2/web-server) y [consulta de DNI](https://endpoint.pe/docs/apis/dni).

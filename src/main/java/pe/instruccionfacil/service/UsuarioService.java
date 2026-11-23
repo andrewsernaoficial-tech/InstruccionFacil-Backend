@@ -35,21 +35,24 @@ public class UsuarioService {
     private final Clock reloj;
     private final String hashAlternativo;
     private final AgendaRepository agenda;
+    private final DniService dni;
     private final AuditoriaRepository auditoria;
 
     public UsuarioService(UsuarioRepository usuarios, PasswordEncoder passwords, JwtEncoder jwt, Clock reloj,
-                          AgendaRepository agenda, AuditoriaRepository auditoria) {
+                          AgendaRepository agenda, AuditoriaRepository auditoria, DniService dni) {
         this.usuarios = usuarios;
         this.passwords = passwords;
         this.jwt = jwt;
         this.reloj = reloj;
         this.agenda = agenda;
+        this.dni = dni;
         this.auditoria = auditoria;
         this.hashAlternativo = passwords.encode(java.util.UUID.randomUUID().toString());
     }
 
     @Transactional
     public Respuestas.Usuario registrar(Solicitudes.Registro datos) {
+        dni.verificar(datos.dni(), datos.nombre());
         return MapeoRespuestas.usuario(usuarios.crearCliente(datos.nombre().trim(), normalizar(datos.email()),
             datos.telefono(), datos.dni(), datos.nacimiento(), datos.direccion().trim(), hash(datos.password())));
     }
@@ -63,6 +66,7 @@ public class UsuarioService {
                 || datos.nacimiento() == null || datos.direccion() == null || datos.direccion().isBlank())) {
             throw ApiException.invalido("Completa teléfono, DNI, fecha de nacimiento y dirección del instructor");
         }
+        if (datos.rol() == Rol.INSTRUCTOR) dni.verificar(datos.dni(), datos.nombre());
         return MapeoRespuestas.usuario(usuarios.crear(datos.nombre().trim(), normalizar(datos.email()), datos.telefono(),
             hash(datos.password()), datos.rol(), datos.dni(), datos.nacimiento(),
             datos.direccion() == null ? null : datos.direccion().trim()));
@@ -74,7 +78,12 @@ public class UsuarioService {
 
     @Transactional
     public Respuestas.Usuario editarPersonal(long actor, long id, Solicitudes.EdicionPersonal datos) {
-        usuarios.personalParaEditar(id).orElseThrow(() -> ApiException.noEncontrado("Cuenta de personal no encontrada"));
+        var cuenta = usuarios.personalParaEditar(id)
+            .orElseThrow(() -> ApiException.noEncontrado("Cuenta de personal no encontrada"));
+        if (cuenta.rol() == Rol.INSTRUCTOR && datos.dni() != null
+                && (!datos.dni().equals(cuenta.dni()) || !datos.nombre().trim().equals(cuenta.nombre()))) {
+            dni.verificar(datos.dni(), datos.nombre());
+        }
         usuarios.actualizar(id, datos.nombre().trim(), normalizar(datos.email()), datos.telefono(), datos.dni(),
             datos.nacimiento(), datos.direccion() == null ? null : datos.direccion().trim());
         auditoria.registrar(actor, "PERSONAL", id, "ACTUALIZADO", null);
@@ -138,6 +147,11 @@ public class UsuarioService {
     public Respuestas.Usuario actualizar(long id, Solicitudes.Perfil datos) {
         String correo = normalizar(datos.email());
         validarContacto(correo, datos.telefono());
+        var cuenta = obtener(id);
+        if ((cuenta.rol() == Rol.CLIENTE || cuenta.rol() == Rol.INSTRUCTOR)
+                && (!datos.dni().equals(cuenta.dni()) || !datos.nombre().trim().equals(cuenta.nombre()))) {
+            dni.verificar(datos.dni(), datos.nombre());
+        }
         usuarios.actualizar(id, datos.nombre().trim(), correo, datos.telefono(), datos.dni(),
             datos.nacimiento(), datos.direccion().trim());
         return perfil(id);

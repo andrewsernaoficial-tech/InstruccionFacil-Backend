@@ -23,3 +23,16 @@ app:
   pago-yape: ${APP_PAGO_YAPE:}
   pago-plin: ${APP_PAGO_PLIN:}
   pago-transferencia: ${APP_PAGO_TRANSFERENCIA:}
+  mp-api-url: ${APP_MP_API_URL:https://api.mercadopago.com}
+  mp-token: ${APP_MP_TOKEN:}
+  mp-webhook-secret: ${APP_MP_WEBHOOK_SECRET:}
+  mp-frontend-url: ${APP_MP_FRONTEND_URL:}
+  gmail-oauth-url: ${APP_GMAIL_OAUTH_URL:https://oauth2.googleapis.com/token}
+  gmail-api-url: ${APP_GMAIL_API_URL:https://gmail.googleapis.com}
+  gmail-client-id: ${APP_GMAIL_CLIENT_ID:}
+  gmail-client-secret: ${APP_GMAIL_CLIENT_SECRET:}
+  gmail-refresh-token: ${APP_GMAIL_REFRESH_TOKEN:}
+  gmail-remitente: ${APP_GMAIL_REMITENTE:}
+  dni-api-url: ${APP_DNI_API_URL:https://api.endpoint.pe}
+  dni-token: ${APP_DNI_TOKEN:}
+  dni-obligatorio: ${APP_DNI_OBLIGATORIO:false}
