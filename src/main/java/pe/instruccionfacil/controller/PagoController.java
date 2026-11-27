@@ -14,12 +14,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pe.instruccionfacil.dto.Respuestas;
-import pe.instruccionfacil.dto.Solicitudes;
-import pe.instruccionfacil.entity.MedioPago;
-import pe.instruccionfacil.service.PagoService;
-import pe.instruccionfacil.service.PasarelaService;
-import pe.instruccionfacil.service.ReciboCorreoService;
+import pe.instruccionfacil.dto.*;
+
+import pe.instruccionfacil.enums.MedioPago;
+import pe.instruccionfacil.service.service.PagoService;
+import pe.instruccionfacil.service.service.PasarelaService;
+import pe.instruccionfacil.service.service.ReciboCorreoService;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -38,65 +38,65 @@ public class PagoController {
 
     @PostMapping("/citas/{id}/pagos/checkout")
     @PreAuthorize("hasRole('CLIENTE')")
-    Respuestas.EnlaceCheckout checkout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+    EnlaceCheckoutResponseDTO checkout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         return pasarela.abrir(Long.parseLong(jwt.getSubject()), id);
     }
 
     @GetMapping("/citas/{id}/pagos/checkout")
     @PreAuthorize("hasRole('CLIENTE')")
-    Respuestas.VerificacionCheckout estadoCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+    VerificacionCheckoutResponseDTO estadoCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         return pasarela.estadoCheckout(Long.parseLong(jwt.getSubject()), id);
     }
 
     @PostMapping("/citas/{id}/pagos/checkout/cancelar")
     @PreAuthorize("hasRole('CLIENTE')")
-    Respuestas.VerificacionCheckout cancelarCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+    VerificacionCheckoutResponseDTO cancelarCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         return pasarela.cancelarCheckout(Long.parseLong(jwt.getSubject()), id);
     }
 
     @PostMapping("/citas/{id}/pagos/checkout/verificar")
     @PreAuthorize("hasRole('CLIENTE')")
-    Respuestas.VerificacionCheckout verificarCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+    VerificacionCheckoutResponseDTO verificarCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         return pasarela.verificarPagoPrueba(Long.parseLong(jwt.getSubject()), id);
     }
 
     @PostMapping("/pagos/{id}/recibo/correo")
     @PreAuthorize("hasAnyRole('CLIENTE','ADMIN','RECEPCION')")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    Respuestas.EnvioCorreo enviarRecibo(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+    EnvioCorreoResponseDTO enviarRecibo(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         return correo.solicitar(Long.parseLong(jwt.getSubject()), id);
     }
 
     @GetMapping("/pagos/medios")
     @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
-    List<Respuestas.MedioDisponible> medios() {
+    List<MedioDisponibleResponseDTO> medios() {
         return pagos.medios();
     }
 
     @GetMapping("/citas/{id}/pagos")
     @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
-    List<Respuestas.Pago> historial(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+    List<PagoResponseDTO> historial(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         return pagos.historial(Long.parseLong(jwt.getSubject()), id);
     }
 
     @PostMapping(path = "/citas/{id}/pagos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('CLIENTE','RECEPCION','ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    Respuestas.Pago subir(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @RequestParam("medio") MedioPago medio,
+    PagoResponseDTO subir(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @RequestParam("medio") MedioPago medio,
                @RequestParam(name = "operacion", required = false) String operacion,
                @RequestParam(name = "archivo", required = false) MultipartFile archivo) {
-        return pagos.subir(Long.parseLong(jwt.getSubject()), id, new Solicitudes.CargaComprobante(medio, operacion, archivo));
+        return pagos.subir(Long.parseLong(jwt.getSubject()), id, new CargaComprobanteRequestDTO(medio, operacion, archivo));
     }
 
     @GetMapping("/admin/pagos/pendientes")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
-    List<Respuestas.Pago> pendientes() {
+    List<PagoResponseDTO> pendientes() {
         return pagos.pendientes();
     }
 
     @PatchMapping("/admin/pagos/{id}/revision")
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCION')")
-    Respuestas.Pago revisar(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @Valid @RequestBody Solicitudes.Revision datos) {
+    PagoResponseDTO revisar(@AuthenticationPrincipal Jwt jwt, @PathVariable long id, @Valid @RequestBody RevisionRequestDTO datos) {
         return pagos.revisar(Long.parseLong(jwt.getSubject()), id, datos);
     }
 

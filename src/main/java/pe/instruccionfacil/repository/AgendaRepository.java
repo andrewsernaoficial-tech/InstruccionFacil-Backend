@@ -6,10 +6,11 @@ import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import pe.instruccionfacil.entity.Canal;
-import pe.instruccionfacil.entity.EstadoCita;
-import pe.instruccionfacil.entity.Modelo.*;
-import pe.instruccionfacil.entity.Transmision;
+import pe.instruccionfacil.enums.Canal;
+import pe.instruccionfacil.enums.EstadoCita;
+import pe.instruccionfacil.entity.*;
+import pe.instruccionfacil.enums.*;
+import pe.instruccionfacil.enums.Transmision;
 
 @Repository
 public class AgendaRepository {

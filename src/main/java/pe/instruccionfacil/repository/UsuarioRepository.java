@@ -7,8 +7,9 @@ import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import pe.instruccionfacil.entity.Modelo.*;
-import pe.instruccionfacil.entity.Rol;
+import pe.instruccionfacil.entity.*;
+import pe.instruccionfacil.enums.*;
+import pe.instruccionfacil.enums.Rol;
 
 @Repository
 public class UsuarioRepository {

@@ -1,8 +1,8 @@
 package pe.instruccionfacil.controller;
 
 import org.springframework.web.bind.annotation.*;
-import pe.instruccionfacil.dto.Respuestas;
-import pe.instruccionfacil.service.HealthService;
+import pe.instruccionfacil.dto.*;
+import pe.instruccionfacil.service.service.HealthService;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -14,8 +14,8 @@ public class HealthController {
     }
 
     @GetMapping("/health")
-    Respuestas.EstadoSalud estado() {
+    EstadoSaludResponseDTO estado() {
         salud.verificarConexion();
-        return new Respuestas.EstadoSalud("UP");
+        return new EstadoSaludResponseDTO("UP");
     }
 }

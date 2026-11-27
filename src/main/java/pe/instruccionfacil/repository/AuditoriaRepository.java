@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
-import pe.instruccionfacil.entity.Modelo.Evento;
+import pe.instruccionfacil.entity.Evento;
 
 @Repository
 public class AuditoriaRepository {

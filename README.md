@@ -170,3 +170,8 @@ Documentación de proveedores: [Mercado Pago Orders](https://www.mercadopago.com
 3. Inicia el backend y el frontend. Entra como alumno, abre una reserva pendiente y elige **Preparar pago de prueba**. Copia el enlace **Abrir checkout de prueba** y ábrelo en una ventana de incógnito con una tarjeta de prueba del panel.
 4. Vuelve a la agenda local y pulsa **Verificar pago de prueba**. `POST /api/v1/citas/{id}/pagos/checkout/verificar` consulta la orden guardada con Mercado Pago y confirma la reserva solo si la orden está acreditada y coincide con el importe y la moneda de la cita. El modo de prueba no requiere un túnel y no envía automáticamente recibos por correo.
 
+
+
+## Arquitectura por capas
+
+Inspirada en `dreyna/pharmaSoft`: `controller` (REST y DTO), `dto` (RequestDTO/ResponseDTO individuales), `service/service` (interfaces), `service/impl` (lógica), `repository` (JDBC y Oracle), `entity` (modelos individuales), `enums`, `mapper`, `exception`, `config` y `util`. Las migraciones Flyway permanecen en sus ubicaciones originales. No se cambian las rutas HTTP, el esquema de datos ni las propiedades de configuración. Los controladores inyectan interfaces de servicio.

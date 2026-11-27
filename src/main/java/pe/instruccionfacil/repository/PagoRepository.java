@@ -9,9 +9,10 @@ import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import pe.instruccionfacil.entity.EstadoPago;
-import pe.instruccionfacil.entity.MedioPago;
-import pe.instruccionfacil.entity.Modelo.*;
+import pe.instruccionfacil.enums.EstadoPago;
+import pe.instruccionfacil.enums.MedioPago;
+import pe.instruccionfacil.entity.*;
+import pe.instruccionfacil.enums.*;
 
 @Repository
 public class PagoRepository {
