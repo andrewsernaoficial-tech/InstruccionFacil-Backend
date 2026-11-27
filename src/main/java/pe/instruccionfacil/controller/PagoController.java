@@ -42,6 +42,18 @@ public class PagoController {
         return pasarela.abrir(Long.parseLong(jwt.getSubject()), id);
     }
 
+    @GetMapping("/citas/{id}/pagos/checkout")
+    @PreAuthorize("hasRole('CLIENTE')")
+    Respuestas.VerificacionCheckout estadoCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        return pasarela.estadoCheckout(Long.parseLong(jwt.getSubject()), id);
+    }
+
+    @PostMapping("/citas/{id}/pagos/checkout/cancelar")
+    @PreAuthorize("hasRole('CLIENTE')")
+    Respuestas.VerificacionCheckout cancelarCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        return pasarela.cancelarCheckout(Long.parseLong(jwt.getSubject()), id);
+    }
+
     @PostMapping("/citas/{id}/pagos/checkout/verificar")
     @PreAuthorize("hasRole('CLIENTE')")
     Respuestas.VerificacionCheckout verificarCheckout(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {

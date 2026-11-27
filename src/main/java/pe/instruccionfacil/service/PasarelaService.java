@@ -101,6 +101,7 @@ public class PasarelaService {
             return actual;
         });
         return transaccion.execute(tx -> {
+            agenda.bloquearCambios();
             var intento = checkout.porCita(citaId, true).orElseThrow();
             if (!intento.abierto(LocalDateTime.now(reloj))) {
                 throw ApiException.conflicto("El intento de Mercado Pago terminó. Elige otro medio si la reserva sigue vigente");
@@ -109,17 +110,80 @@ public class PasarelaService {
                 comprobarEntorno(intento.ordenExterna());
                 return new Respuestas.EnlaceCheckout(intento.enlace());
             }
-            var orden = crearOrden(cita, intento);
-            String id = orden.path("id").asString("");
-            comprobarEntorno(id);
-            String url = orden.path("checkout_url").asString("");
-            if (!id.matches("[A-Za-z0-9]{5,60}") || !enlaceValido(url)
-                    || !intento.referencia().equals(orden.path("external_reference").asString(""))
-                    || !"PEN".equals(orden.path("currency").asString(""))
-                    || !mismoMonto(cita.monto(), orden, "total_amount")) throw noDisponible();
-            checkout.guardarOrden(citaId, id, url);
-            return new Respuestas.EnlaceCheckout(url);
+            var creado = recuperarOrden(cita, intento);
+            return new Respuestas.EnlaceCheckout(creado.enlace());
         });
+    }
+
+    // Reutiliza la clave original incluso si la respuesta inicial se perdió.
+    private Checkout recuperarOrden(Cita cita, Checkout intento) {
+        var orden = crearOrden(cita, intento);
+        String id = orden.path("id").asString("");
+        comprobarEntorno(id);
+        String url = orden.path("checkout_url").asString("");
+        if (!id.matches("[A-Za-z0-9]{5,60}") || !enlaceValido(url)
+                || !intento.referencia().equals(orden.path("external_reference").asString(""))
+                || !"PEN".equals(orden.path("currency").asString(""))
+                || !mismoMonto(cita.monto(), orden, "total_amount")) throw noDisponible();
+        checkout.guardarOrden(cita.id(), id, url);
+        return checkout.porCita(cita.id(), false).orElseThrow();
+    }
+
+    public Respuestas.VerificacionCheckout estadoCheckout(long actor, long citaId) {
+        citas.autorizada(actor, citaId);
+        return checkout.porCita(citaId, false)
+            .map(this::resumenCheckout)
+            .orElse(new Respuestas.VerificacionCheckout("SIN_ORDEN", null));
+    }
+
+    private Respuestas.VerificacionCheckout resumenCheckout(Checkout intento) {
+        return new Respuestas.VerificacionCheckout(intento.estado(), intento.incidencia());
+    }
+
+    public Respuestas.VerificacionCheckout cancelarCheckout(long actor, long citaId) {
+        return transaccion.execute(tx -> {
+            // Mismo orden de bloqueos que la acreditación: agenda, después checkout.
+            agenda.bloquearCambios();
+            Cita cita = citas.autorizada(actor, citaId);
+            var intento = checkout.porCita(citaId, true).orElse(null);
+            if (intento == null) return new Respuestas.VerificacionCheckout("SIN_ORDEN", null);
+            if ("CERRADO".equals(intento.estado()) || "ACREDITADO".equals(intento.estado())
+                    || "INCIDENCIA".equals(intento.estado())) return resumenCheckout(intento);
+            if (!habilitada()) throw noDisponible();
+
+            // Un timeout al crear no significa que la orden externa no exista.
+            if (intento.ordenExterna() == null) intento = recuperarOrden(cita, intento);
+            comprobarEntorno(intento.ordenExterna());
+            var orden = consultarOrden(intento.ordenExterna());
+            validarReferencia(intento, orden);
+            String estado = orden.path("status").asString("");
+            if ("created".equals(estado) || "action_required".equals(estado)) {
+                String clave = UUID.nameUUIDFromBytes(("cancelar:" + intento.referencia())
+                    .getBytes(StandardCharsets.UTF_8)).toString();
+                try {
+                    http.post().uri(apiUrl + "/v1/orders/{id}/cancel", intento.ordenExterna())
+                        .headers(headers -> headers.setBearerAuth(token))
+                        .header("X-Idempotency-Key", clave).retrieve().toBodilessEntity();
+                } catch (RestClientException ex) {
+                    // La orden puede haber cambiado o el proveedor haber recibido la petición.
+                    // Solo se cierra localmente cuando la consulta confirma el estado externo.
+                }
+                orden = consultarOrden(intento.ordenExterna());
+                validarReferencia(intento, orden);
+                estado = orden.path("status").asString("");
+                if ("created".equals(estado) || "action_required".equals(estado)) throw noDisponible();
+            }
+            aplicarOrden(intento, orden);
+            var actualizado = checkout.porCita(citaId, false).orElseThrow();
+            if ("CERRADO".equals(actualizado.estado())) {
+                auditoria.registrar(actor, "CITA", citaId, "CHECKOUT_CERRADO", "Orden Mercado Pago cerrada");
+            }
+            return resumenCheckout(actualizado);
+        });
+    }
+
+    private static void validarReferencia(Checkout intento, JsonNode orden) {
+        if (!intento.referencia().equals(orden.path("external_reference").asString(""))) throw noDisponible();
     }
 
     private JsonNode crearOrden(Cita cita, Checkout intento) {
